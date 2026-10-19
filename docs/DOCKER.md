@@ -17,7 +17,7 @@ The image is built from the checkout, which works on amd64, arm64 and 32-bit ARM
 
 ## Without cloning (prebuilt image)
 
-[`deploy/docker-compose.yml`](../deploy/docker-compose.yml) is a standalone file that pulls `ghcr.io/torresmi9294/pidash:latest`, which GitHub Actions rebuilds on every push to `main`. While the repo is private you must `docker login ghcr.io` first (instructions are in the file's header).
+[`deploy/docker-compose.yml`](../deploy/docker-compose.yml) is a standalone file that pulls `ghcr.io/torresmi9294/pidash:latest`, which GitHub Actions rebuilds on every push to `main`. No login is needed.
 
 ## Upgrade / logs / stop
 
