@@ -51,7 +51,7 @@ case "$MODE" in
     openbox >/dev/null 2>&1 &
     ;;
   desktop)
-    command -v xset >/dev/null && [ -n "${DISPLAY:-}" ] && xset s off -dpms s noblank 2>/dev/null || true
+    if command -v xset >/dev/null && [ -n "${DISPLAY:-}" ]; then xset s off -dpms s noblank 2>/dev/null || true; fi
     ;;
 esac
 

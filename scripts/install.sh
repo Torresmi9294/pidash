@@ -55,7 +55,7 @@ done
 case "$KIOSK" in auto|cage|x11|desktop|none) ;; *) die "--kiosk must be auto, cage, x11, desktop or none" ;; esac
 if [ -n "$PORT" ]; then
   case "$PORT" in ''|*[!0-9]*) die "--port must be a number" ;; esac
-  [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || die "--port must be 1-65535"
+  if [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then die "--port must be 1-65535"; fi
 fi
 
 [ "$(id -u)" -eq 0 ] || die "Run as root:  sudo $0 $*"
@@ -63,7 +63,7 @@ command -v apt-get >/dev/null || die "This installer needs an apt-based OS (Rasp
 command -v systemctl >/dev/null || die "systemd is required."
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-[ -f "$SRC_DIR/package.json" ] && [ -d "$SRC_DIR/server" ] || die "Run this from a PiDash checkout (package.json not found in $SRC_DIR)."
+if [ ! -f "$SRC_DIR/package.json" ] || [ ! -d "$SRC_DIR/server" ]; then die "Run this from a PiDash checkout (package.json not found in $SRC_DIR)."; fi
 
 export DEBIAN_FRONTEND=noninteractive
 
