@@ -63,7 +63,7 @@ async function getData(widget, ctx) {
     return entry.value;
   }
 
-  const pending = Promise.resolve(t.data(widget.options || {}, ctx))
+  const pending = Promise.resolve(t.data(widget.options || {}, { ...ctx, widgetId: widget.id }))
     .then((value) => {
       cache.set(widget.id, { at: Date.now(), value });
       return value;

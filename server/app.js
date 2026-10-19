@@ -8,6 +8,7 @@ const widgets = require('./widgets');
 const google = require('./google');
 const store = require('./store');
 const health = require('./health');
+const logos = require('./logos');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const BG_DIR = path.join(config.DATA_DIR, 'backgrounds');
@@ -166,6 +167,23 @@ function createApp() {
     const file = path.resolve(root, 'assets', req.params[0]);
     if (!file.startsWith(path.join(root, 'assets') + path.sep)) return res.status(400).end();
     res.sendFile(file, (err) => err && !res.headersSent && res.status(404).end());
+  });
+
+  // Cached, server-side fetched team logos (see server/logos.js).
+  app.get('/api/logo', async (req, res) => {
+    try {
+      const img = await logos.get(String(req.query.w || ''), String(req.query.u || ''));
+      res.set({
+        'Content-Type': img.type,
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+        // SVGs can carry scripts; this keeps them inert even if opened directly.
+        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      });
+      res.send(img.buf);
+    } catch (e) {
+      res.status(e.status || 502).type('text/plain').send(e.status === 403 ? 'Not allowed' : 'Logo unavailable');
+    }
   });
 
   app.get('/api/backgrounds', (req, res) => {

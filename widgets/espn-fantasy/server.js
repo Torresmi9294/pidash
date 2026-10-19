@@ -40,6 +40,8 @@ function currentSeason(sport) {
   return m >= 10 ? y + 1 : y; // basketball/hockey are named for the ending year
 }
 
+const logos = require('../../server/logos');
+
 const streakText = (r) => (r.streakLength > 0 && r.streakType ? `${String(r.streakType)[0].toUpperCase()}${r.streakLength}` : '');
 
 const teamName = (t) => t.name || [t.location, t.nickname].filter(Boolean).join(' ') || `Team ${t.id}`;
@@ -74,7 +76,7 @@ function buildCallouts(matchups, standings, myTeamId) {
   return out;
 }
 
-exports.data = async (o) => {
+exports.data = async (o, ctx = {}) => {
   if (!o.leagueId) throw new Error('Enter your ESPN league ID in the widget settings.');
   const leagueId = String(o.leagueId).replace(/\D/g, '');
   if (!leagueId) throw new Error('League ID should be the number from your league URL (leagueId=...).');
@@ -148,6 +150,16 @@ exports.data = async (o) => {
   const myTeamId = o.myTeamId ? Number(o.myTeamId) : null;
   const pinned = String(o.pinnedTeams || '').split(/[,\s]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0);
   const callouts = buildCallouts(matchups, standings, myTeamId);
+
+  // Serve team logos from this server (cached; avoids hotlink/referrer/mixed-content/login problems).
+  if (ctx.widgetId) {
+    const sources = [...standings.map((t) => t.logo), ...matchups.flatMap((m) => [m.home, m.away].filter(Boolean).map((s) => s.logo))].filter(Boolean);
+    logos.allow(ctx.widgetId, sources, headers.cookie || '');
+    const swap = (item) => { if (item.logo) item.logo = logos.proxyUrl(ctx.widgetId, item.logo); };
+    standings.forEach(swap);
+    matchups.forEach((m) => { swap(m.home); if (m.away) swap(m.away); });
+    logos.warm(ctx.widgetId, sources.map((s) => logos.normalize(s)).filter(Boolean)).catch(() => {});
+  }
 
   return {
     leagueName: (d.settings && d.settings.name) || `League ${leagueId}`,

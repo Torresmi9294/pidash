@@ -130,6 +130,7 @@ Set Display → Background to *Photo slideshow* and copy JPG/PNG/WebP files into
 | Symptom | Try |
 |---|---|
 | Black screen after reboot (cage) | `journalctl -u pidash-kiosk -b`. Then try `sudo ./scripts/install.sh --kiosk x11`. |
+| A fantasy team shows initials instead of its logo | PiDash fetches and caches logos itself. Initials mean ESPN has no logo for that team or it could not be downloaded. See the reason with `journalctl -u pidash \| grep logos` (Docker: `docker compose logs pidash \| grep logos`). Cached copies live in `<data dir>/cache/logos` and refresh weekly. |
 | Page loads but icons are boxes | `sudo apt install fonts-noto-color-emoji` and reboot. |
 | Wrong "today" / event times | Set the time zone: `sudo raspi-config` → Localisation → Timezone. |
 | Server problems | `journalctl -u pidash -f` |
