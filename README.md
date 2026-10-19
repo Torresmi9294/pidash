@@ -8,7 +8,8 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **ESPN Fantasy** league standings and matchups (football, baseball, basketball, hockey)
 - **News** from any RSS/Atom feeds
 - **Plugin widgets**: drop a folder in and it appears in the admin. See [docs/WRITING_WIDGETS.md](docs/WRITING_WIDGETS.md)
-- Dark/light theme, photo-slideshow background, portrait rotation, night dimming, live reload when you save
+- **11 themes** (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) with custom accent and background colors, card styles, fonts, text size, and an automatic night theme
+- Photo-slideshow background, portrait rotation, night dimming, live reload when you save
 - Runs from Pi Zero up to Pi 5, and on any x86 Linux box or Docker host
 
 ## Install on a Raspberry Pi

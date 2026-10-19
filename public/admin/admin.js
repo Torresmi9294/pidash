@@ -58,6 +58,14 @@
     if (f.type === 'select') {
       return wrap(h('select', { onchange: (e) => set(e.target.value) }, f.options.map((o) => h('option', { value: o.value, selected: (val || f.options[0].value) === o.value }, o.label))));
     }
+    if (f.type === 'color') {
+      const hex = /^#[0-9a-f]{6}$/i.test(val || '') ? val : f.fallback || '#5ab0ff';
+      const picker = h('input', { type: 'color', value: hex, style: 'width:56px;height:36px;padding:2px;flex:none', oninput: (e) => { set(e.target.value); state.textContent = e.target.value; } });
+      const state = h('span', { class: 'muted small' }, val || 'theme default');
+      return h('div', { class: 'f' }, h('span', { style: 'display:block;font-weight:600;font-size:13px;margin-bottom:3px' }, f.label),
+        h('div', { class: 'row' }, picker, state, h('button', { class: 'btn sm', type: 'button', onclick: () => { set(''); render(); } }, 'Use theme default')),
+        f.help ? h('small', { class: 'muted' }, f.help) : null);
+    }
     const hadSecret = f.secret && val === MASK;
     const common = {
       value: hadSecret ? '' : (val ?? ''),
@@ -118,23 +126,52 @@
   }
 
   // ---- display -----------------------------------------------------------
+  function themeGrid(d, key, allowNone) {
+    const themes = Object.entries(window.PIDASH_THEMES).filter(([k]) => k !== 'dark');
+    const tile = (k, label, bg, text, accent, sel) => h('button', {
+      type: 'button', title: label, class: `tile ${sel ? 'sel' : ''}`,
+      style: `background:linear-gradient(135deg,${bg[0]},${bg[1]});color:${text};border-color:${sel ? accent : 'transparent'}`,
+      onclick: () => { d[key] = k; touch(); render(); },
+    }, h('b', { style: `color:${accent}` }, 'Aa'), h('span', {}, label));
+    const current = d[key] === 'dark' ? 'midnight' : d[key];
+    return h('div', { class: 'tiles' },
+      allowNone ? h('button', { type: 'button', class: `tile none ${!d[key] ? 'sel' : ''}`, onclick: () => { d[key] = ''; touch(); render(); } }, h('span', {}, 'Same as day')) : null,
+      themes.map(([k, t]) => tile(k, t.label, [t.vars['--bg1'], t.vars['--bg2']], t.vars['--text'], t.vars['--accent'], current === k)));
+  }
+
   function viewDisplay() {
     const d = cfg.display;
     const F = (key, label, type, extra = {}) => field({ key, label, type, ...extra }, d);
-    return [h('div', { class: 'panel' }, h('h2', {}, 'Display'),
-      F('title', 'Browser tab title', 'text'),
-      F('rotateSeconds', 'Seconds each rotating widget stays on screen', 'number'),
-      F('theme', 'Theme', 'select', { options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }] }),
-      F('timeFormat', 'Clock', 'select', { options: [{ value: '12h', label: '12-hour' }, { value: '24h', label: '24-hour' }] }),
-      F('units', 'Units', 'select', { options: [{ value: 'imperial', label: 'Imperial (°F, mph)' }, { value: 'metric', label: 'Metric (°C, km/h)' }] }),
-      F('locale', 'Locale (optional)', 'text', { placeholder: 'en-US', help: 'Controls date/day names. Blank = browser default.' }),
-      F('rotation', 'Screen rotation (degrees)', 'select', { options: [0, 90, 180, 270].map((v) => ({ value: v, label: `${v}°` })), help: 'For portrait-mounted screens.' }),
-      F('background', 'Background', 'select', { options: [{ value: 'gradient', label: 'Gradient' }, { value: 'photos', label: 'Photo slideshow' }], help: 'Photos: put images in <data dir>/backgrounds on the Pi (JPG/PNG/WebP).' }),
-      F('photoSeconds', 'Seconds per photo', 'number'),
-      F('nightMode', 'Dim the screen at night', 'checkbox'),
-      F('nightStart', 'Night starts (hour 0-23)', 'number'),
-      F('nightEnd', 'Night ends (hour 0-23)', 'number'),
-      F('nightDim', 'Night brightness (0 = black, 1 = full)', 'number'))];
+    const fonts = Object.entries(window.PIDASH_FONTS).map(([value, f]) => ({ value, label: f.label }));
+    return [
+      h('div', { class: 'panel' }, h('h2', {}, 'Theme'),
+        h('p', { class: 'muted small' }, 'Pick a look. Everything below customizes it.'),
+        themeGrid(d, 'theme', false),
+        F('accent', 'Accent color (highlights, today, dots)', 'color', { help: 'Overrides the theme accent.' }),
+        h('div', { class: 'row', style: 'align-items:flex-start;gap:24px' },
+          F('bg1', 'Background color A', 'color', { fallback: '#0b1220' }),
+          F('bg2', 'Background color B', 'color', { fallback: '#1b2440' })),
+        F('cardStyle', 'Card style', 'select', { options: [{ value: 'glass', label: 'Glass (translucent blur)' }, { value: 'solid', label: 'Solid' }, { value: 'flat', label: 'Outline only' }] }),
+        F('font', 'Font', 'select', { options: fonts }),
+        F('fontScale', 'Text size (%)', 'number', { placeholder: '100', help: '80-150. Use this to fit your screen or TV.' })),
+      h('div', { class: 'panel' }, h('h2', {}, 'Night'),
+        h('p', { class: 'muted small' }, 'Between the night hours below you can switch to a different theme and/or dim the screen.'),
+        F('nightMode', 'Dim the screen at night', 'checkbox'),
+        F('nightStart', 'Night starts (hour 0-23)', 'number'),
+        F('nightEnd', 'Night ends (hour 0-23)', 'number'),
+        F('nightDim', 'Night brightness (0 = black, 1 = full)', 'number'),
+        h('span', { style: 'display:block;font-weight:600;font-size:13px;margin:10px 0 6px' }, 'Night theme'),
+        themeGrid(d, 'nightTheme', true)),
+      h('div', { class: 'panel' }, h('h2', {}, 'Display'),
+        F('title', 'Browser tab title', 'text'),
+        F('rotateSeconds', 'Seconds each rotating widget stays on screen', 'number'),
+        F('timeFormat', 'Clock', 'select', { options: [{ value: '12h', label: '12-hour' }, { value: '24h', label: '24-hour' }] }),
+        F('units', 'Units', 'select', { options: [{ value: 'imperial', label: 'Imperial (°F, mph)' }, { value: 'metric', label: 'Metric (°C, km/h)' }] }),
+        F('locale', 'Locale (optional)', 'text', { placeholder: 'en-US', help: 'Controls date/day names. Blank = browser default.' }),
+        F('rotation', 'Screen rotation (degrees)', 'select', { options: [0, 90, 180, 270].map((v) => ({ value: v, label: `${v}°` })), help: 'For portrait-mounted screens.' }),
+        F('background', 'Background', 'select', { options: [{ value: 'gradient', label: 'Gradient' }, { value: 'photos', label: 'Photo slideshow' }], help: 'Photos: put images in <data dir>/backgrounds on the Pi (JPG/PNG/WebP).' }),
+        F('photoSeconds', 'Seconds per photo', 'number')),
+    ];
   }
 
   // ---- google ------------------------------------------------------------

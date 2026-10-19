@@ -36,5 +36,10 @@ label.chk { display:flex; gap:8px; align-items:center; margin:10px 0; }
 ol.steps { padding-left:20px; margin:8px 0; } ol.steps li { margin:4px 0; }
 code { background:var(--bg); padding:1px 5px; border-radius:5px; font-size:13px; }
 .rem { display:flex; gap:10px; align-items:center; padding:7px 0; border-top:1px solid var(--line); } .rem.done .t { text-decoration:line-through; color:var(--muted); } .rem .t { flex:1; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; margin:10px 0 14px; }
+.tile { border:2px solid transparent; border-radius:12px; padding:10px 8px; cursor:pointer; font:inherit; text-align:left; display:flex; flex-direction:column; gap:2px; min-height:64px; }
+.tile b { font-size:20px; } .tile span { font-size:12px; opacity:.9; }
+.tile.sel { box-shadow:0 0 0 2px var(--accent); }
+.tile.none { background:var(--bg); color:var(--text); border-color:var(--line); justify-content:center; }
 #toast { opacity:0; position:fixed; bottom:18px; left:50%; transform:translateX(-50%) translateY(80px); background:#222; color:#fff; padding:10px 18px; border-radius:10px; transition:transform .25s; z-index:20; max-width:90vw; }
 #toast.show { transform:translateX(-50%); opacity:1; } #toast.err { background:var(--bad); }

@@ -146,13 +146,19 @@
 
   function initNightMode() {
     const el = document.getElementById('night');
-    if (!display.nightMode) return;
+    if (!display.nightMode && !display.nightTheme) return;
+    let themeShown = display.theme;
     const tick = () => {
       const hr = new Date().getHours();
       const s = Number(display.nightStart);
       const e = Number(display.nightEnd);
       const night = s > e ? hr >= s || hr < e : hr >= s && hr < e;
-      el.style.opacity = night ? String(1 - Math.min(Math.max(Number(display.nightDim), 0), 1)) : '0';
+      if (display.nightMode) el.style.opacity = night ? String(1 - Math.min(Math.max(Number(display.nightDim), 0), 1)) : '0';
+      const want = night && display.nightTheme ? display.nightTheme : display.theme;
+      if (want !== themeShown) {
+        themeShown = want;
+        PIDASH_APPLY_THEME(display, { theme: want });
+      }
     };
     tick();
     timers.push(setInterval(tick, 60000));
@@ -183,7 +189,7 @@
     }
     rev = cfg.rev;
     display = cfg.display;
-    document.documentElement.dataset.theme = display.theme === 'light' ? 'light' : 'dark';
+    PIDASH_APPLY_THEME(display);
     document.title = display.title || 'PiDash';
     applyLayout();
     window.addEventListener('resize', applyLayout);

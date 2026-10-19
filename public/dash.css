@@ -9,25 +9,21 @@
   --good: #52d28a;
   --warn: #ffb454;
   --bad: #ff6b6b;
-}
-[data-theme='light'] {
-  --bg1: #eef2f9;
-  --bg2: #d9e2f3;
-  --card: rgba(255, 255, 255, 0.75);
-  --card-border: rgba(20, 30, 60, 0.10);
-  --text: #16203a;
-  --muted: #5a6784;
-  --accent: #1c6fd1;
+  --card-solid: #18213a;
+  --overlay: rgba(0, 0, 0, 0.45);
+  --accent-soft: rgba(90, 176, 255, 0.24);
+  --scale: 1;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html {
   /* Scale everything from the shorter screen edge so it fits 480p panels up to 4K TVs. */
-  font-size: max(11px, calc(min(100vw, 100vh) * 0.022));
+  font-size: max(11px, calc(min(100vw, 100vh) * 0.022 * var(--scale)));
 }
 html, body { height: 100%; overflow: hidden; background: var(--bg1); }
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  font-family: var(--font);
   color: var(--text);
   cursor: none;
   -webkit-font-smoothing: antialiased;
@@ -41,8 +37,7 @@ body {
 #bg { position: absolute; inset: 0; }
 .bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 2s ease; }
 .bg-layer.on { opacity: 1; }
-#root.photos #bg::after { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); }
-[data-theme='light'] #root.photos #bg::after { background: rgba(255, 255, 255, 0.35); }
+#root.photos #bg::after { content: ''; position: absolute; inset: 0; background: var(--overlay); }
 
 #layout { position: absolute; inset: 0; display: grid; grid-template-columns: 27% 1fr; gap: 1.2rem; padding: 1.4rem; }
 #layout.portrait { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -63,6 +58,8 @@ body {
   min-height: 0;
   overflow: hidden;
 }
+[data-cards='solid'] .card { background: var(--card-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
+[data-cards='flat'] .card { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border-width: 2px; }
 .card.rotate { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.8s ease; }
 .card.rotate.active { opacity: 1; pointer-events: auto; }
 .card-title { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.8rem; display: flex; justify-content: space-between; }
@@ -113,7 +110,7 @@ body {
 .month .cell.other { opacity: 0.4; }
 .month .cell.today { outline: 2px solid var(--accent); }
 .month .n { font-size: 0.85rem; color: var(--muted); }
-.month .e { font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(90, 176, 255, 0.22); border-radius: 0.25rem; padding: 0 0.25rem; margin-top: 1px; }
+.month .e { font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--accent-soft); border-radius: 0.25rem; padding: 0 0.25rem; margin-top: 1px; }
 
 /* ---- reminders ---- */
 .rem { display: flex; align-items: baseline; gap: 0.8rem; padding: 0.55rem 0; font-size: 1.35rem; border-top: 1px solid var(--card-border); }
