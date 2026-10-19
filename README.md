@@ -7,6 +7,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Reminders** managed from the admin page
 - **ESPN Fantasy** league standings and matchups (football, baseball, basketball, hockey)
 - **News** from any RSS/Atom feeds
+- **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
 - **Plugin widgets**: drop a folder in and it appears in the admin. See [docs/WRITING_WIDGETS.md](docs/WRITING_WIDGETS.md)
 - **11 themes** (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) with custom accent and background colors, card styles, fonts, text size, and an automatic night theme
 - Photo-slideshow background, portrait rotation, night dimming, live reload when you save
@@ -99,6 +100,10 @@ Enter your league ID (the `leagueId=` number in your league URL) and sport. For 
 ### Reminders and news
 
 Reminders are added on the admin Reminders tab (instant). The News widget takes any list of RSS/Atom URLs.
+
+### Health
+
+Apple Health and Android Health Connect keep data on the phone and offer no cloud API, so your phone **pushes** a daily summary to PiDash. Open **Admin → Health** for your endpoint, a private token, ready-to-copy `curl` example, and iPhone Shortcut / Health Auto Export / Android instructions, then add the **Health** widget. Use the *Send sample data* button to preview the widget before your phone is connected. The supported fields are `steps, activeCalories, exerciseMinutes, standHours, heartRate, restingHeartRate, sleepHours, bloodOxygen, distanceKm/Mi, weightKg/Lb`. Send a `person` name to track several people (one widget each).
 
 ### Photo background
 

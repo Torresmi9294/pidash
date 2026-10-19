@@ -7,6 +7,7 @@ const config = require('./config');
 const widgets = require('./widgets');
 const google = require('./google');
 const store = require('./store');
+const health = require('./health');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const BG_DIR = path.join(config.DATA_DIR, 'backgrounds');
@@ -36,6 +37,7 @@ function maskConfig(cfg) {
   out.admin = { hasPassword: !!cfg.admin.password };
   out.google.clientSecret = cfg.google.clientSecret ? config.SECRET_MASK : '';
   out.google.tokens = undefined;
+  out.health = undefined;
   for (const w of out.widgets) {
     for (const key of widgets.secretKeys(w.type)) {
       if (w.options && w.options[key]) w.options[key] = config.SECRET_MASK;
@@ -81,6 +83,21 @@ function createApp() {
 
   const app = express();
   app.disable('x-powered-by');
+  // Health ingest: phones POST here with the health token (separate from the admin password).
+  app.post('/api/health/ingest', express.json({ limit: '2mb' }), (req, res) => {
+    const m = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+    const given = (m && m[1]) || req.headers['x-api-key'] || req.query.token;
+    if (!config.get().health.token) return res.status(403).json({ error: 'Health ingest is not enabled yet. Open Admin > Health.' });
+    if (!health.tokenOk(given)) return res.status(401).json({ error: 'Invalid token.' });
+    try {
+      const r = health.ingest(req.body);
+      widgets.clearCache();
+      res.json({ ok: true, ...r });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
   app.use(express.json({ limit: '256kb' }));
 
   // ---- live reload (SSE) -------------------------------------------------
@@ -249,6 +266,19 @@ function createApp() {
     widgets.clearCache();
     broadcast();
     res.json({ deleted: store.deleteReminder(req.params.id) });
+  });
+
+  admin.get('/health/info', (req, res) => res.json({ token: health.ensureToken(), people: health.people() }));
+  admin.post('/health/token', (req, res) => res.json({ token: health.regenerateToken() }));
+  admin.post('/health/sample', (req, res) => {
+    health.sample(String((req.body && req.body.person) || 'me'));
+    widgets.clearCache();
+    res.json({ people: health.people() });
+  });
+  admin.delete('/health/data', (req, res) => {
+    health.clear();
+    widgets.clearCache();
+    res.json({ people: [] });
   });
 
   admin.get('/new-id/:type', (req, res) => res.json({ id: config.newId(req.params.type.replace(/[^a-z0-9-]/gi, '')) }));

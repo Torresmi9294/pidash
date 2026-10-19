@@ -31,6 +31,7 @@ const DEFAULTS = () => ({
     nightDim: 0.35,
   },
   admin: { password: '' },
+  health: { token: '' },
   google: { clientId: '', clientSecret: '', redirectUri: '', tokens: null },
   widgets: [
     { id: 'clock-1', type: 'clock', enabled: true, slot: 'sidebar', options: {} },

@@ -77,13 +77,13 @@
   }
 
   // ---- tabs --------------------------------------------------------------
-  const TABS = { widgets: 'Widgets', display: 'Display', google: 'Google', reminders: 'Reminders', security: 'Security' };
+  const TABS = { widgets: 'Widgets', display: 'Display', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security' };
 
   function render() {
     $('#tabs').replaceChildren(...Object.entries(TABS).map(([k, label]) =>
       h('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; render(); } }, label)));
     const view = $('#view');
-    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, google: viewGoogle, reminders: viewReminders, security: viewSecurity })[tab]());
+    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity })[tab]());
   }
 
   // ---- widgets -----------------------------------------------------------
@@ -221,6 +221,45 @@
           h('li', {}, 'APIs & Services → OAuth consent screen: choose External, fill in app name/email, add your own address as a test user, then ', h('b', {}, 'Publish app'), ' (set to "In production") so the login does not expire after 7 days. You may see an "unverified app" warning for your own account - that is normal for personal use.'),
           h('li', {}, 'Credentials → Create credentials → OAuth client ID → type ', h('b', {}, 'Web application'), '. Under Authorized redirect URIs add: ', redirectCode, '.'),
           h('li', {}, 'Paste the Client ID and Secret above, Save, then Connect Google.')))];
+  }
+
+  // ---- health (saved immediately, not part of "Save & apply") ------------
+  function viewHealth() {
+    const url = `${location.origin}/api/health/ingest`;
+    const tokenBox = h('input', { type: 'text', readonly: true, class: 'grow', value: '...', onclick: (e) => e.target.select() });
+    const people = h('span', { class: 'muted small' }, '');
+    let token = '';
+    const curlText = () => `curl -X POST "${url}" \\\n  -H "Authorization: Bearer ${token || '<token>'}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"steps": 8421, "activeCalories": 420, "exerciseMinutes": 32, "restingHeartRate": 58, "sleepHours": 7.2}'`;
+    const curl = h('pre', { style: 'overflow:auto;background:var(--bg);padding:10px;border-radius:8px;font-size:12px' }, curlText());
+    const refresh = guard(async () => {
+      const i = await api('GET', '/health/info');
+      token = i.token;
+      tokenBox.value = token;
+      people.textContent = i.people.length ? `Data received for: ${i.people.join(', ')}` : 'No data received yet.';
+      curl.textContent = curlText();
+    });
+    refresh();
+    return [
+      h('div', { class: 'panel' }, h('h2', {}, 'Send health data to PiDash'),
+        h('p', { class: 'muted small' }, 'Apple Health and Android Health Connect keep your data on the phone - there is no cloud API PiDash can read from. Instead your phone (or watch app) pushes a daily summary to the address below. The token acts like a password for this one address, separate from the admin password.'),
+        h('label', { class: 'f' }, h('span', {}, 'Endpoint (POST)'), h('input', { type: 'text', readonly: true, value: url, onclick: (e) => e.target.select() })),
+        h('label', { class: 'f' }, h('span', {}, 'Token'), h('div', { class: 'row' }, tokenBox,
+          h('button', { class: 'btn', onclick: guard(async () => { try { await navigator.clipboard.writeText(token); toast('Token copied'); } catch { tokenBox.select(); toast('Press Ctrl+C to copy'); } }) }, 'Copy'),
+          h('button', { class: 'btn danger', onclick: guard(async () => { if (!confirm('Generate a new token? Anything using the old one stops working.')) return; await api('POST', '/health/token'); await refresh(); toast('New token created'); }) }, 'Regenerate'))),
+        people,
+        h('div', { class: 'row', style: 'margin-top:10px' },
+          h('button', { class: 'btn', onclick: guard(async () => { await api('POST', '/health/sample', { person: 'me' }); await refresh(); toast('Sample data added - add a Health widget to see it'); }) }, 'Send sample data'),
+          h('button', { class: 'btn danger', onclick: guard(async () => { if (confirm('Delete all stored health data?')) { await api('DELETE', '/health/data'); await refresh(); } }) }, 'Clear stored data'))),
+      h('div', { class: 'panel' }, h('h2', {}, 'Data format'),
+        h('p', { class: 'muted small' }, 'Send any subset of these as JSON. Each send replaces that day\'s value for the metric. Add "date" (YYYY-MM-DD) to backfill, "person" for multiple people, or "days": [ ... ] for several days at once.'),
+        h('p', { class: 'small' }, h('code', {}, 'steps, activeCalories, exerciseMinutes, standHours, heartRate, restingHeartRate, sleepHours (or sleepMinutes), bloodOxygen, distanceKm / distanceMi, weightKg / weightLb')),
+        curl),
+      h('div', { class: 'panel' }, h('h2', {}, 'Apple Health (iPhone / Apple Watch)'),
+        h('p', { class: 'small' }, h('b', {}, 'Option A - Shortcuts (free). '), 'In the Shortcuts app create a shortcut: for each metric use ', h('i', {}, 'Find Health Samples'), ' (Start Date = today, e.g. Steps) then ', h('i', {}, 'Calculate Statistics > Sum'), ' (use Latest/Average for heart rate and weight). Finish with ', h('i', {}, 'Get Contents of URL'), ': URL = the endpoint above, Method = POST, Headers: ', h('code', {}, 'Authorization: Bearer <token>'), ', Request Body = JSON with fields like ', h('code', {}, 'steps'), ' and ', h('code', {}, 'activeCalories'), ' set to the numbers. Then Automation > Time of Day (e.g. 8am, noon, 6pm, 10pm) > Run Shortcut, with "Run Immediately".'),
+        h('p', { class: 'small' }, h('b', {}, 'Option B - Health Auto Export (app). '), 'Create a REST API automation with the URL above, header ', h('code', {}, 'Authorization: Bearer <token>'), ', format JSON, and "Summarize data" on with aggregation by day. PiDash understands its steps, active energy, exercise, stand, heart rate, resting HR, sleep, weight, distance and blood oxygen metrics.')),
+      h('div', { class: 'panel' }, h('h2', {}, 'Google / Android'),
+        h('p', { class: 'small' }, 'Health Connect also has no cloud API, so use any Android automation app that can read Health Connect and send an HTTP POST (same JSON and header as above). Google Fit\'s cloud API is being wound down, so PiDash does not use it. If you wear a Fitbit, tell me - a direct Fitbit pull is possible as a separate integration.')),
+    ];
   }
 
   // ---- reminders (saved immediately, not part of "Save & apply") ---------
