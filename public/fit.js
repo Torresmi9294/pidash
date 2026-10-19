@@ -12,21 +12,35 @@
   const FILL_MAX = 1.6;  // default upper limit when growing into spare room
   let mode = 'fill';     // 'fill' | 'shrink' | 'off'
 
+  const MEDIA = /^(IMG|VIDEO|CANVAS|SVG|PICTURE)$/i;
+
   // Does this element hide some of its own content (overflow hidden/clip/auto with more inside)?
   function clipped(el) {
     // scroll/client sizes are rounded to whole pixels, so a strict comparison catches even 1px of hidden content
     if (el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth) return false;
+    // A frame that only holds pictures crops them on purpose (object-fit: cover), or opts out explicitly.
+    if (el.hasAttribute && el.hasAttribute('data-fit-ignore')) return false;
+    const kids = el.children;
+    if (kids && kids.length && Array.prototype.every.call(kids, (k) => MEDIA.test(k.tagName || ''))) return false;
     const cs = getComputedStyle(el);
     return cs.overflowX !== 'visible' || cs.overflowY !== 'visible';
   }
 
-  function firstClipped(body) {
-    if (clipped(body)) return body;
-    for (const n of body.querySelectorAll('*')) if (clipped(n)) return n;
+  // A scale-independent quirk (e.g. a frame whose picture is a few px too tall) overflows by a sliver; content that
+  // truly doesn't fit overflows by a lot. Only slivers may be ignored.
+  const sliver = (n) => {
+    const amount = Math.max(n.scrollHeight - n.clientHeight, n.scrollWidth - n.clientWidth);
+    return amount <= 8 && amount <= 0.2 * Math.max(n.clientHeight, n.clientWidth);
+  };
+
+  // `ignore` = elements known to clip at every scale (scale-independent quirks); they don't count.
+  function firstClipped(body, ignore) {
+    if (!(ignore && ignore.has(body)) && clipped(body)) return body;
+    for (const n of body.querySelectorAll('*')) if (!(ignore && ignore.has(n)) && clipped(n)) return n;
     return null;
   }
 
-  const overflows = (body) => !!firstClipped(body);
+  const overflows = (body, ignore) => !!firstClipped(body, ignore);
   const apply = (el, s) => el.style.setProperty('--u', `calc(1rem * ${s})`);
 
   // Largest s in [min, max] with bad() false. Returns { s, ok } (ok=false: even min is too big).
@@ -49,6 +63,11 @@
 
   const visible = (x) => x.style.display !== 'none';
 
+  function hideItem(x) {
+    x.style.display = 'none';
+    x.setAttribute('data-fit-hidden', '');
+  }
+
   function restore(body) {
     for (const x of body.querySelectorAll('[data-fit-hidden]')) {
       x.style.removeProperty('display');
@@ -58,26 +77,33 @@
   }
 
   // Hide trailing items inside whichever element is clipping until nothing is clipped (keeps at least one).
-  function trim(body) {
+  function trim(body, ignore) {
     let hidden = 0;
     for (let i = 0; i < 80; i++) {
-      const bad = firstClipped(body);
+      const bad = firstClipped(body, ignore);
       if (!bad) break;
       const items = [...bad.querySelectorAll('[data-fit-item]')].filter(visible);
       const total = [...body.querySelectorAll('[data-fit-item]')].filter(visible).length;
       if (!items.length || total <= 1) break;
-      const last = items[items.length - 1];
-      last.style.display = 'none';
-      last.setAttribute('data-fit-hidden', '');
+      hideItem(items[items.length - 1]);
       hidden++;
-      const group = last.closest('[data-fit-group]');
-      if (group && ![...group.querySelectorAll('[data-fit-item]')].some(visible)) {
-        group.style.display = 'none';
-        group.setAttribute('data-fit-hidden', '');
-      }
+      const group = items[items.length - 1].closest('[data-fit-group]');
+      if (group && ![...group.querySelectorAll('[data-fit-item]')].some(visible)) hideItem(group);
     }
     if (hidden) body.setAttribute('data-fit-trim', String(hidden));
     return hidden;
+  }
+
+  // Elements that are STILL clipped at the smallest size with only one list item showing: shrinking can't
+  // fix those (e.g. a frame whose picture is a little taller than it), so they must not drive the scale.
+  function persistent(body, set) {
+    const items = [...body.querySelectorAll('[data-fit-item]')];
+    items.slice(1).forEach(hideItem);
+    set(MIN);
+    const out = new Set();
+    for (const n of body.querySelectorAll('*')) if (clipped(n) && sliver(n)) out.add(n); // never the widget body itself
+    restore(body);
+    return out;
   }
 
   const ceiling = (opts) => (mode === 'shrink' ? 1 : Math.max(1, (opts && opts.max) || FILL_MAX));
@@ -89,13 +115,29 @@
     if (mode === 'off') { body.style.removeProperty('--u'); delete body.dataset.fit; return 1; }
     if (!body.isConnected || body.clientHeight <= 0 || body.clientWidth <= 0) return null;
     const set = (v) => apply(body, v);
-    const bad = () => overflows(body);
-    let r = search(set, bad, Math.max(ceiling(opts), floor), floor);
+    const top = Math.max(ceiling(opts), floor);
+    let ignore = null;
+    const bad = () => overflows(body, ignore);
+
+    let r = search(set, bad, top, floor);
     if (!r.ok) {
-      trim(body);                       // drop whole trailing items rather than cutting text mid-line
-      if (bad()) r = search(set, bad, floor, MIN);
+      trim(body, ignore);               // drop whole trailing items rather than cutting text mid-line
+      r = bad() ? search(set, bad, floor, MIN) : { s: floor, ok: true };
     }
-    body.dataset.fit = (r.s).toFixed(2);
+    if (!r.ok) {
+      // Still clipped at the smallest size: if some element clips at EVERY scale it is a quirk, not too much
+      // content. Ignore just those elements and fit against everything else, rather than collapsing to the floor.
+      restore(body);
+      ignore = persistent(body, set);
+      if (ignore.size) {
+        r = search(set, bad, top, floor);
+        if (!r.ok) {
+          trim(body, ignore);
+          r = bad() ? search(set, bad, floor, MIN) : { s: floor, ok: true };
+        }
+      }
+    }
+    body.dataset.fit = r.s.toFixed(2);
     return r.s;
   }
 
@@ -105,17 +147,25 @@
     if (!bodies.length) return null;
     if (mode === 'off') { bodies.forEach((b) => b.style.removeProperty('--u')); return 1; }
     const o = opts || {};
+    let ignore = null;
     const bad = () => {
       if (o.horizontal) {
         if (container.offsetHeight > o.layoutEl.clientHeight * 0.32) return true;
       } else if (container.scrollHeight > container.clientHeight + 1) {
         return true;
       }
-      return bodies.some(overflows);
+      return bodies.some((b) => overflows(b, ignore));
     };
-    const { s } = search((v) => bodies.forEach((b) => apply(b, v)), bad, ceiling(o), 0.45);
-    bodies.forEach((b) => { b.dataset.fit = s.toFixed(2); });
-    return s;
+    const set = (v) => bodies.forEach((b) => apply(b, v));
+    let r = search(set, bad, ceiling(o), 0.45);
+    if (!r.ok) {
+      set(MIN);
+      ignore = new Set();
+      for (const b of bodies) for (const n of b.querySelectorAll('*')) if (clipped(n) && sliver(n)) ignore.add(n);
+      if (ignore.size) r = search(set, bad, ceiling(o), 0.45);
+    }
+    bodies.forEach((b) => { b.dataset.fit = r.s.toFixed(2); });
+    return r.s;
   }
 
   window.PidashFit = { card, group, overflows, setMode: (m) => { mode = ['fill', 'shrink', 'off'].includes(m) ? m : 'fill'; }, mode: () => mode };

@@ -126,13 +126,15 @@ function loadFit() {
 }
 
 // A fake widget body whose content height scales with --u, like real text does.
-function fakeBody({ natural, client, items = 0, itemHeight = 40 }) {
+function fakeBody({ natural, client, items = 0, itemHeight = 40, quirk = false }) {
   const state = { s: 1 };
   const list = Array.from({ length: items }, () => {
     const attrs = new Set();
     return { style: { display: '', removeProperty() { this.display = ''; } }, setAttribute: (k) => attrs.add(k), removeAttribute: (k) => attrs.delete(k), closest: () => null, querySelectorAll: () => [], attrs };
   });
   const visible = () => list.filter((i) => i.style.display !== 'none').length;
+  // one stable element (like a real DOM node): a frame that is always 2px clipped, whatever the scale
+  const quirkEl = quirk ? { scrollHeight: 32, clientHeight: 30, scrollWidth: 60, clientWidth: 60, children: [], hasAttribute: () => false, querySelectorAll: () => [] } : null;
   const body = {
     isConnected: true, clientHeight: client, clientWidth: 400, scrollWidth: 100, dataset: {}, attrs: {},
     get scrollHeight() { return Math.round((items ? visible() * itemHeight : natural) * state.s); },
@@ -141,7 +143,7 @@ function fakeBody({ natural, client, items = 0, itemHeight = 40 }) {
       removeProperty: () => { state.s = 1; },
     },
     querySelectorAll(sel) {
-      if (sel === '*') return [];
+      if (sel === '*') return quirkEl ? [quirkEl] : [];
       if (sel === '[data-fit-item]') return list;
       if (sel === '[data-fit-hidden]') return list.filter((i) => i.style.display === 'none');
       return [];
@@ -244,4 +246,16 @@ test('news slideshow and list widgets declare how they should be fitted', () => 
   const src = (f) => fs.readFileSync(path.join(__dirname, '..', 'widgets', f, 'client.js'), 'utf8');
   assert.match(src('rss'), /fit:\s*\(o\)\s*=>\s*o\.layout !== 'slideshow'/);
   for (const w of ['rss', 'calendar', 'reminders', 'espn-fantasy']) assert.match(src(w), /fitFloor:\s*0\.\d+/, `${w} should set fitFloor`);
+});
+
+test('fit: a tiny scale-independent clip (like an image frame) does not drag the whole widget to the floor', () => {
+  const Fit = loadFit();
+  Fit.setMode('fill');
+  // content needs ~0.8 to fit an 80px cell, and one inner frame is ALWAYS 2px clipped regardless of scale
+  const b = fakeBody({ natural: 100, client: 80, quirk: true });
+  const s = Fit.card(b);
+  assert.ok(s > 0.7 && s < 0.9, `expected ~0.8, got ${s}`);
+  assert.ok(b.scrollHeight <= 80, 'real content still has to fit');
+  // ...but genuinely too-much content with the same quirk still floors instead of jumping to the maximum
+  assert.equal(Fit.card(fakeBody({ natural: 100000, client: 50, quirk: true })), 0.35);
 });
