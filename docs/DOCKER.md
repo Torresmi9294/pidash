@@ -19,6 +19,10 @@ The image is built from the checkout, which works on amd64, arm64 and 32-bit ARM
 
 [`deploy/docker-compose.yml`](../deploy/docker-compose.yml) is a standalone file that pulls `ghcr.io/torresmi9294/pidash:latest`, which GitHub Actions rebuilds on every push to `main`. No login is needed.
 
+## Permission denied on /data?
+
+The container fixes ownership of `/data` itself at start-up. If you bind-mount a host folder (`./data:/data`, common on NAS/Portainer), it is chowned to uid/gid 1000 by default. Set `PUID` and `PGID` under `environment:` to your host user's ids if you want the files owned by someone else (Unraid: `99`/`100`; check yours with `id`).
+
 ## Upgrade / logs / stop
 
 ```bash

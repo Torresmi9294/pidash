@@ -72,7 +72,16 @@ function merge(base, over) {
 function load() {
   const saved = readJson(CONFIG_FILE, null);
   config = merge(DEFAULTS(), saved || {});
-  if (!saved) writeJson(CONFIG_FILE, config);
+  if (!saved) {
+    try {
+      writeJson(CONFIG_FILE, config);
+    } catch (e) {
+      if (e.code === 'EACCES' || e.code === 'EROFS') {
+        console.error(`[config] ${DATA_DIR} is not writable by uid ${process.getuid && process.getuid()}. Fix the folder's ownership (or set PUID/PGID in Docker).`);
+      }
+      throw e;
+    }
+  }
   return config;
 }
 
