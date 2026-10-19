@@ -6,6 +6,7 @@
 (() => {
   const registry = {};
   const timers = [];
+  const allCards = [];
   let display = null;
   let rev = null;
 
@@ -67,11 +68,54 @@
       c.def.render(c.body, data, c.ctx);
       c.loaded = true;
       c.card.classList.toggle('stale', !!data._stale);
+      fitNow(c);
     } catch (e) {
-      if (!c.loaded) c.body.replaceChildren(h('div', { class: 'msg' }, e.message));
-      else c.card.classList.add('stale');
+      if (!c.loaded) {
+        c.body.replaceChildren(h('div', { class: 'msg' }, e.message));
+        fitNow(c);
+      } else {
+        c.card.classList.add('stale');
+      }
     }
   }
+
+  // ---- content fit (see fit.js) -------------------------------------------------------------
+  const inSidebar = (c) => !!c.card.parentElement && c.card.parentElement.id === 'sidebar';
+  let fitFrame = 0;
+  const fitQueue = new Set();
+
+  function fitSidebar() {
+    const side = document.getElementById('sidebar');
+    if (!side || !side.isConnected) return;
+    const cards = allCards.filter((c) => inSidebar(c) && c.def.fit !== false);
+    const layoutEl = document.getElementById('layout');
+    PidashFit.group(cards.map((c) => c.body), side, {
+      horizontal: ['top', 'bottom'].includes(layoutEl.dataset.layout),
+      layoutEl,
+      max: cards.length ? Math.min(...cards.map((c) => c.def.fitMax || 1.6)) : 1.6,
+    });
+  }
+
+  function fitNow(c) {
+    if (!c.def) return;
+    if (c.def.fit === false) { c.body.style.removeProperty('--u'); return; }
+    if (inSidebar(c)) fitSidebar();
+    else PidashFit.card(c.body, { max: c.def.fitMax });
+  }
+
+  function fitSoon(c) {
+    if (c) fitQueue.add(c); else allCards.forEach((x) => x.loaded && fitQueue.add(x));
+    if (fitFrame) return;
+    fitFrame = requestAnimationFrame(() => {
+      fitFrame = 0;
+      let sidebarDone = false;
+      for (const x of fitQueue) {
+        if (inSidebar(x)) { if (!sidebarDone) { sidebarDone = true; fitSidebar(); } } else fitNow(x);
+      }
+      fitQueue.clear();
+    });
+  }
+
 
   async function buildCard(w, slot, mode = '') {
     if (!registry[w.type] && !(await loadClient(w.type) && registry[w.type])) {
@@ -81,9 +125,13 @@
     const body = h('div', { class: 'card-body' });
     const card = h('section', { class: `card card-${w.type} ${mode === 'tile' ? `tile ${slot === 'sidebar' ? 'sidebar' : ''}` : mode === 'pane' ? `rotate ${slot === 'sidebar' ? 'sidebar' : ''}` : slot}` }, def.chrome === false ? null : h('h2', { class: 'card-title' }, def.title || w.name), body);
     const c = { w, def, card, body, loaded: false, ctx: { id: w.id, options: w.options || {}, display, slot, fmt: makeFmt(display), h } };
+    allCards.push(c);
     // Called once the card is attached to the page (widgets such as the clock check el.isConnected).
     c.start = () => {
       refresh(c);
+      // Re-fit whenever the widget redraws itself (clock ticks, calendar minute repaint, slides...).
+      let t = 0;
+      new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => fitSoon(c), 600); }).observe(body, { childList: true, subtree: true, characterData: true });
       if (!w.clientOnly) timers.push(setInterval(() => refresh(c), Math.max(15, w.refreshSec || 300) * 1000));
     };
     return c;
@@ -207,9 +255,16 @@
     display = cfg.display;
     PIDASH_APPLY_THEME(display);
     PIDASH_APPLY_LAYOUT(display);
+    PidashFit.setMode(display.contentFit);
     document.title = display.title || 'PiDash';
     applyLayout();
     window.addEventListener('resize', applyLayout);
+    let resizeT = 0;
+    window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => fitSoon(), 250); });
+    // Late-arriving fonts/images can change sizes slightly: re-fit shortly after startup.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitSoon());
+    setTimeout(() => fitSoon(), 2000);
+    setTimeout(() => fitSoon(), 7000);
 
     const sidebar = document.getElementById('sidebar');
     const stage = document.getElementById('stage');

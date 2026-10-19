@@ -1,5 +1,6 @@
 Dash.register('clock', {
   chrome: false,
+  fitMax: 2.5, // the clock is happy to grow big
   render(el, _data, ctx) {
     const { h, fmt, options } = ctx;
     const time = h('div', { class: 'clock-time' });

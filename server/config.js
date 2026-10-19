@@ -27,6 +27,7 @@ const DEFAULTS = () => ({
     dots: true,
     gridColumns: 'auto',
     gridPanes: [],
+    contentFit: 'fill',
     timeFormat: '12h',
     units: 'imperial',
     locale: '',

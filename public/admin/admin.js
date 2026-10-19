@@ -220,6 +220,7 @@
         F('spacing', 'Spacing', 'select', { options: [{ value: 'tight', label: 'Tight - fits more' }, { value: 'normal', label: 'Normal' }, { value: 'roomy', label: 'Roomy' }] }),
         F('corners', 'Corners', 'select', { options: [{ value: 'sharp', label: 'Sharp' }, { value: 'normal', label: 'Rounded' }, { value: 'round', label: 'Very round' }] }),
         F('transition', 'Rotation transition', 'select', { options: [{ value: 'fade', label: 'Fade' }, { value: 'slide', label: 'Slide' }, { value: 'zoom', label: 'Zoom' }, { value: 'none', label: 'None (instant)' }] }),
+        F('contentFit', 'Widget content fit', 'select', { options: [{ value: 'fill', label: 'Fill - shrink to fit and grow to use spare room' }, { value: 'shrink', label: 'Shrink only - never enlarge' }, { value: 'off', label: 'Off - fixed size' }], help: 'Scales each widget so nothing is cut off in its cell.' }),
         F('dots', 'Show the page dots at the bottom', 'checkbox', { default: true })),
       d.layout === 'grid-rotate' ? paneEditor(d) : null,
       h('div', { class: 'panel' }, h('h2', {}, 'Night'),

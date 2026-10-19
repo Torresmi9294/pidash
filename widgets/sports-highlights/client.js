@@ -1,5 +1,6 @@
 Dash.register('sports-highlights', {
   title: 'Sports Highlights',
+  fit: false, // photo/video fills its cell by itself
   render(el, d, { h, options, slot }) {
     clearInterval(el._hlTick);
     if (!d.items.length) return el.replaceChildren(h('div', { class: 'msg' }, 'No highlights right now.'));

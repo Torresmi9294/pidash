@@ -67,6 +67,15 @@ Dash.register('stocks', {
 - Styles: reuse the classes in [`public/dash.css`](../public/dash.css) (`.msg`, `.muted`, `.rem`, `.rss`, ...) or inject your own `<style>` from `client.js`. Colors come from CSS variables (`--text`, `--muted`, `--accent`, `--good`, `--warn`, `--bad`) so your widget follows the light/dark theme.
 - A widget that keeps its own timers (like the clock) should stop them when `!el.isConnected`.
 
+## Content fit (sizing)
+
+PiDash scales each widget's contents to its cell so nothing is cut off: down when the cell is small, and up to use spare room (Admin > Display > *Widget content fit*). To take part:
+
+- **Use `calc(N * var(--u))` instead of `rem`** for sizes in CSS (`--u` is 1rem normally; the fitter changes it per widget). A test fails if `dash.css` contains plain `rem`. Percentages, `em`, `px` borders and `vw/vh` are fine.
+- Build lists from repeated items and mark each with `'data-fit-item': true` (and the wrapper of a group of items with `'data-fit-group': true`). If the widget still doesn't fit at a readable size, PiDash hides whole trailing items and shows "+N more" instead of cutting a line in half.
+- Opt out or tune in `Dash.register`: `fit: false` for widgets that fill their cell themselves (photos/video), `fitMax: 2.5` to let a widget grow larger than the default 1.6x.
+- Anything with `overflow: hidden` that clips content counts as "doesn't fit", so avoid hiding overflow on purpose.
+
 ## Tips
 
 - Test your `data()` quickly: `curl localhost:8080/api/widgets/<widget-id>/data`.

@@ -117,3 +117,114 @@ test('grid panes are validated and sanitized when saved', async () => {
     server.close();
   }
 });
+
+// ---- content fit ---------------------------------------------------------------------------
+function loadFit() {
+  const ctx = { window: {}, getComputedStyle: () => ({ overflowX: 'hidden', overflowY: 'hidden' }) };
+  vm.runInNewContext(pub('fit.js'), ctx);
+  return ctx.window.PidashFit;
+}
+
+// A fake widget body whose content height scales with --u, like real text does.
+function fakeBody({ natural, client, items = 0, itemHeight = 40 }) {
+  const state = { s: 1 };
+  const list = Array.from({ length: items }, () => {
+    const attrs = new Set();
+    return { style: { display: '', removeProperty() { this.display = ''; } }, setAttribute: (k) => attrs.add(k), removeAttribute: (k) => attrs.delete(k), closest: () => null, querySelectorAll: () => [], attrs };
+  });
+  const visible = () => list.filter((i) => i.style.display !== 'none').length;
+  const body = {
+    isConnected: true, clientHeight: client, clientWidth: 400, scrollWidth: 100, dataset: {}, attrs: {},
+    get scrollHeight() { return Math.round((items ? visible() * itemHeight : natural) * state.s); },
+    style: {
+      setProperty: (_k, v) => { state.s = parseFloat(/\*\s*([\d.]+)\)/.exec(v)[1]); },
+      removeProperty: () => { state.s = 1; },
+    },
+    querySelectorAll(sel) {
+      if (sel === '*') return [];
+      if (sel === '[data-fit-item]') return list;
+      if (sel === '[data-fit-hidden]') return list.filter((i) => i.style.display === 'none');
+      return [];
+    },
+    removeAttribute(k) { delete this.attrs[k]; },
+    setAttribute(k, v) { this.attrs[k] = v; },
+    scale: () => state.s,
+  };
+  return body;
+}
+
+test('fit: shrinks to the largest scale that fits, grows to fill, and respects the modes', () => {
+  const Fit = loadFit();
+  // natural height 100 px per 1.0 scale; the cell is 80 px tall
+  let b = fakeBody({ natural: 100, client: 80 });
+  Fit.setMode('fill');
+  let s = Fit.card(b);
+  assert.ok(Math.abs(s - 0.8) < 0.02, `expected ~0.8, got ${s}`);
+  assert.ok(b.scrollHeight <= 80, 'content must fit');
+
+  // plenty of room: fill grows (up to the 1.6 default cap), shrink-only stays at 1
+  b = fakeBody({ natural: 100, client: 400 });
+  assert.equal(Fit.card(b), 1.6);
+  assert.equal(Fit.card(b, { max: 2.5 }), 2.5);
+  Fit.setMode('shrink');
+  assert.equal(Fit.card(b, { max: 2.5 }), 1);
+  b = fakeBody({ natural: 100, client: 80 });
+  assert.ok(Fit.card(b) < 0.85);
+
+  Fit.setMode('off');
+  assert.equal(Fit.card(b), 1);
+  assert.equal(b.scale(), 1);
+
+  Fit.setMode('nonsense'); // falls back to fill
+  assert.equal(Fit.mode(), 'fill');
+});
+
+test('fit: hidden or zero-size cells are skipped; unfittable content is floored, not looped', () => {
+  const Fit = loadFit();
+  const hidden = fakeBody({ natural: 100, client: 0 });
+  assert.equal(Fit.card(hidden), null);
+  const huge = fakeBody({ natural: 100000, client: 50 }); // can never fit
+  assert.equal(Fit.card(huge), 0.35); // absolute floor
+});
+
+test('fit: when text would get too small, whole trailing items are hidden with a "+N more" count', () => {
+  const Fit = loadFit();
+  const b = fakeBody({ natural: 0, client: 100, items: 10 }); // 10 rows x 40px: needs scale 0.25 for all
+  const s = Fit.card(b);
+  const shown = b.querySelectorAll('[data-fit-item]').filter((i) => i.style.display !== 'none').length;
+  assert.ok(shown >= 1 && shown < 10, `some items hidden (shown ${shown})`);
+  assert.ok(s >= 0.6, `stays readable (${s})`);
+  assert.ok(b.scrollHeight <= 100, 'what is shown fits');
+  assert.equal(b.attrs['data-fit-trim'], String(10 - shown));
+  // a later, roomier fit restores everything
+  b.clientHeight = 10000;
+  Fit.card(b);
+  assert.equal(b.querySelectorAll('[data-fit-item]').filter((i) => i.style.display === 'none').length, 0);
+  assert.equal(b.attrs['data-fit-trim'], undefined);
+});
+
+test('stylesheet sizes all go through --u so content fit can scale them', () => {
+  const css = pub('dash.css');
+  const stray = css.split('\n').map((l, i) => [l, i + 1]).filter(([l]) => /\d\s*rem\b/.test(l) && !/--u:\s*1rem/.test(l));
+  assert.deepEqual(stray.map(([l, n]) => `${n}: ${l.trim()}`), [], 'use calc(N * var(--u)) instead of rem in dash.css');
+  assert.ok(/--u:\s*1rem/.test(css));
+  const html = pub('index.html');
+  assert.ok(html.indexOf('/fit.js') > -1 && html.indexOf('/fit.js') < html.indexOf('/dash.js'), 'fit.js must load before dash.js');
+});
+
+test('content fit defaults to fill and persists', async () => {
+  const { createApp } = require('../server/app');
+  const server = createApp().listen(0);
+  await new Promise((r) => server.once('listening', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const j = (p, o = {}) => fetch(base + p, { ...o, headers: { 'content-type': 'application/json' }, body: o.body && JSON.stringify(o.body) }).then((r) => r.json());
+    assert.equal((await j('/api/display')).display.contentFit, 'fill');
+    const cfg = await j('/api/admin/config');
+    cfg.display.contentFit = 'shrink';
+    await j('/api/admin/config', { method: 'PUT', body: cfg });
+    assert.equal((await j('/api/display')).display.contentFit, 'shrink');
+  } finally {
+    server.close();
+  }
+});

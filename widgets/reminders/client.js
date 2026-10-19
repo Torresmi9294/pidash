@@ -11,7 +11,7 @@ Dash.register('reminders', {
         due = h('span', { class: `due ${cls}` }, r.due === today ? 'Today' : r.due < today && hi && !r.done ? `Overdue \u00B7 ${fmt.dateShort(r.due)}` : fmt.dateShort(r.due));
       }
       const status = r.done ? '' : r.due && r.due < today ? 'late' : r.due === today ? 'soon' : '';
-      return h('div', { class: `rem ${r.done ? 'done' : ''} ${hi && status ? `row-${status}` : ''} ${r.starred ? 'starred' : ''}` },
+      return h('div', { 'data-fit-item': true, class: `rem ${r.done ? 'done' : ''} ${hi && status ? `row-${status}` : ''} ${r.starred ? 'starred' : ''}` },
         h('span', { class: 'box' }), r.starred ? h('span', { class: 'star' }, '\u2605') : null, h('span', {}, r.text), due);
     }));
   },

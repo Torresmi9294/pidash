@@ -42,14 +42,14 @@
     const label = (k) => (k === todayKey ? 'Today' : k === tomorrowKey ? 'Tomorrow' : fmt.dateLong(k));
 
     el.replaceChildren(...[...groups.keys()].sort().map((k) =>
-      h('div', { class: 'cal-day' }, h('h3', {}, label(k)),
+      h('div', { class: 'cal-day', 'data-fit-group': true }, h('h3', {}, label(k)),
         groups.get(k).map((e) => {
           const isNow = hi && !e.allDay && startMs(e) <= now && now < endMs(e);
           const isNext = hi && e === nextEvent;
           const past = hi && !e.allDay && endMs(e) <= now;
           const pin = pinned(e);
           const cls = ['cal-ev', isNow && 'now', isNext && 'next', past && 'past', pin && 'pin', hi && e.allDay && 'allday'].filter(Boolean).join(' ');
-          return h('div', { class: cls },
+          return h('div', { class: cls, 'data-fit-item': true },
             h('div', { class: 'when' }, e.allDay ? 'All day' : fmt.time(e.start)),
             h('div', {},
               h('div', { class: 'title' }, pin ? h('span', { class: 'star' }, '★ ') : null, e.title,

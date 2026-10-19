@@ -25,7 +25,7 @@ Dash.register('rss', {
       return box;
     };
 
-    const row = (i) => h('div', { class: `rss ${hasImages ? 'with-thumb' : ''}` },
+    const row = (i) => h('div', { 'data-fit-item': true, class: `rss ${hasImages ? 'with-thumb' : ''}` },
       thumb(i),
       h('div', { class: 'rss-body' }, h('div', { class: 'rss-title' }, i.title), i.summary ? h('div', { class: 'rss-sum' }, i.summary) : null, h('small', {}, meta(i))));
 

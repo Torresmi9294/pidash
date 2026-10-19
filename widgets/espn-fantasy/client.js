@@ -32,12 +32,12 @@
       };
       const matchups = d.matchups.map((m) =>
         m.away
-          ? h('div', { class: `mu ${hi && m.close ? 'close' : ''}` }, side(m.home, m.away), side(m.away, m.home),
+          ? h('div', { 'data-fit-item': true, class: `mu ${hi && m.close ? 'close' : ''}` }, side(m.home, m.away), side(m.away, m.home),
               hi && m.close ? h('span', { class: 'tag' }, '⚡ close') : null)
-          : h('div', { class: 'mu' }, h('div', { class: `ms ${mine(m.home.id) ? 'me' : ''}` }, L(m.home, 'md'), h('span', { class: 'mn' }, m.home.name), h('span', { class: 'muted' }, 'BYE'))));
+          : h('div', { 'data-fit-item': true, class: 'mu' }, h('div', { class: `ms ${mine(m.home.id) ? 'me' : ''}` }, L(m.home, 'md'), h('span', { class: 'mn' }, m.home.name), h('span', { class: 'muted' }, 'BYE'))));
 
       const standings = d.standings.map((t) =>
-        h('div', { class: `st ${mine(t.id) ? 'me' : ''} ${hi && t.rank <= 3 ? `top${t.rank}` : ''}` },
+        h('div', { 'data-fit-item': true, class: `st ${mine(t.id) ? 'me' : ''} ${hi && t.rank <= 3 ? `top${t.rank}` : ''}` },
           h('span', { class: 'rk' }, hi && t.rank <= 3 ? MEDAL[t.rank - 1] : t.rank),
           h('span', { class: 'sn' }, L(t, 'sm'), h('span', {}, t.name),
             hi && t.streak ? h('span', { class: `streak ${t.streak[0] === 'W' ? 'w' : t.streak[0] === 'L' ? 'l' : ''}` }, t.streak) : null),
@@ -45,7 +45,7 @@
 
       const chips = callouts && showM && d.callouts.length
         ? h('div', { class: 'callouts' }, d.callouts.map((c) =>
-            h('div', { class: `callout ${mine(c.teamId) ? 'me' : ''}` }, h('span', { class: 'ci' }, c.icon), h('b', {}, `${c.label}: `), c.text)))
+            h('div', { 'data-fit-item': true, class: `callout ${mine(c.teamId) ? 'me' : ''}` }, h('span', { class: 'ci' }, c.icon), h('b', {}, `${c.label}: `), c.text)))
         : null;
 
       el.replaceChildren(h('div', { class: `espn ${showM && showS ? '' : 'single'}` },
