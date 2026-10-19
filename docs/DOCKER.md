@@ -15,6 +15,10 @@ docker compose up -d --build
 
 The image is built from the checkout, which works on amd64, arm64 and 32-bit ARM. Settings, API keys and reminders live in the `pidash-data` Docker volume and survive restarts and upgrades.
 
+## Without cloning (prebuilt image)
+
+[`deploy/docker-compose.yml`](../deploy/docker-compose.yml) is a standalone file that pulls `ghcr.io/torresmi9294/pidash:latest`, which GitHub Actions rebuilds on every push to `main`. While the repo is private you must `docker login ghcr.io` first (instructions are in the file's header).
+
 ## Upgrade / logs / stop
 
 ```bash

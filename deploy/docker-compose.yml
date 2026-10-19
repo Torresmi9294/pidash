@@ -1,0 +1,22 @@
+# Standalone PiDash compose - no clone needed. Pulls the prebuilt multi-arch image from GitHub.
+#
+# The package is private, so log in to GitHub's registry once on the server:
+#   echo <GitHub token with read:packages> | docker login ghcr.io -u Torresmi9294 --password-stdin
+# Then:
+#   docker compose up -d
+# Update later:
+#   docker compose pull && docker compose up -d
+services:
+  pidash:
+    image: ghcr.io/torresmi9294/pidash:latest
+    container_name: pidash
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - pidash-data:/data
+    environment:
+      TZ: America/New_York   # your IANA time zone
+
+volumes:
+  pidash-data:
