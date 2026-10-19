@@ -73,13 +73,13 @@
     }
   }
 
-  async function buildCard(w, slot) {
+  async function buildCard(w, slot, tile = false) {
     if (!registry[w.type] && !(await loadClient(w.type) && registry[w.type])) {
       return { card: h('section', { class: `card ${slot}` }, h('div', { class: 'msg' }, `Widget "${w.type}" has no client script.`)), w, def: null, start() {} };
     }
     const def = registry[w.type];
     const body = h('div', { class: 'card-body' });
-    const card = h('section', { class: `card card-${w.type} ${slot}` }, def.chrome === false ? null : h('h2', { class: 'card-title' }, def.title || w.name), body);
+    const card = h('section', { class: `card card-${w.type} ${tile ? `tile ${slot === 'sidebar' ? 'sidebar' : ''}` : slot}` }, def.chrome === false ? null : h('h2', { class: 'card-title' }, def.title || w.name), body);
     const c = { w, def, card, body, loaded: false, ctx: { id: w.id, options: w.options || {}, display, slot, fmt: makeFmt(display), h } };
     // Called once the card is attached to the page (widgets such as the clock check el.isConnected).
     c.start = () => {
@@ -111,13 +111,29 @@
     timers.push(setTimeout(next, dur(0)));
   }
 
+  let gridCount = 0;
+
   function applyLayout() {
     const root = document.getElementById('root');
     const rot = Number(display.rotation) || 0;
     root.className = [rot ? `rot${rot}` : '', display.background === 'photos' ? 'photos' : ''].join(' ').trim();
     const w = root.clientWidth;
     const hgt = root.clientHeight;
-    document.getElementById('layout').classList.toggle('portrait', hgt > w * 1.05);
+    const portrait = hgt > w * 1.05;
+    const layoutEl = document.getElementById('layout');
+    layoutEl.classList.toggle('portrait', portrait);
+    // Side-by-side layouts become a top bar on portrait screens.
+    let name = PIDASH_LAYOUTS[display.layout] ? display.layout : 'sidebar-left';
+    if (portrait && (name === 'sidebar-left' || name === 'sidebar-right')) name = 'top';
+    layoutEl.dataset.layout = name;
+    if (name === 'grid') {
+      const pref = Number(display.gridColumns);
+      let cols = pref >= 1 ? pref : gridCount <= 1 ? 1 : gridCount <= 4 ? 2 : 3;
+      if (portrait) cols = Math.min(cols, 2);
+      layoutEl.style.setProperty('--cols', String(cols));
+      document.documentElement.style.setProperty('--gscale', gridCount >= 7 ? '0.72' : gridCount >= 5 ? '0.82' : gridCount >= 3 ? '0.92' : '1');
+    }
+    document.documentElement.dataset.lay = name;
   }
 
   async function initBackground() {
@@ -190,17 +206,45 @@
     rev = cfg.rev;
     display = cfg.display;
     PIDASH_APPLY_THEME(display);
+    PIDASH_APPLY_LAYOUT(display);
     document.title = display.title || 'PiDash';
     applyLayout();
     window.addEventListener('resize', applyLayout);
 
     const sidebar = document.getElementById('sidebar');
     const stage = document.getElementById('stage');
-    const side = cfg.widgets.filter((w) => w.slot === 'sidebar');
-    const rot = cfg.widgets.filter((w) => w.slot !== 'sidebar');
+    const layoutEl = document.getElementById('layout');
+    const layoutName = PIDASH_LAYOUTS[display.layout] ? display.layout : 'sidebar-left';
+    let side = cfg.widgets.filter((w) => w.slot === 'sidebar');
+    let rot = cfg.widgets.filter((w) => w.slot !== 'sidebar');
+
+    if (layoutName === 'grid') {
+      // Everything on screen at once: no sidebar/stage, no rotation.
+      sidebar.remove();
+      stage.remove();
+      const all = [...side, ...rot];
+      gridCount = all.length;
+      applyLayout();
+      if (!all.length) layoutEl.append(h('div', { class: 'msg' }, 'No widgets enabled. Open /admin on this device to add some.'));
+      for (const w of all) {
+        const c = await buildCard(w, w.slot === 'sidebar' ? 'sidebar' : 'rotate', true);
+        layoutEl.append(c.card);
+        c.start();
+      }
+      document.getElementById('dots').replaceChildren();
+      initBackground();
+      initNightMode();
+      liveReload();
+      return;
+    }
+
+    if (layoutName === 'focus') {
+      rot = [...side, ...rot]; // one widget at a time: the clock and weather rotate too
+      side = [];
+    }
     if (!side.length) {
       sidebar.remove();
-      document.getElementById('layout').style.gridTemplateColumns = '1fr';
+      layoutEl.dataset.nosidebar = '';
     }
 
     for (const w of side) {

@@ -43,3 +43,29 @@ window.PIDASH_APPLY_THEME = function applyTheme(display, opts) {
   root.dataset.theme = key;
   return t;
 };
+
+// Layout presets (picked in Admin > Display). To add one: add an entry here, then CSS for
+// #layout[data-layout='<name>'] in dash.css, and a mini diagram in admin.css.
+window.PIDASH_LAYOUTS = {
+  'sidebar-left': { label: 'Sidebar left', desc: 'Always-visible widgets on the left, rotating widgets on the right.' },
+  'sidebar-right': { label: 'Sidebar right', desc: 'Always-visible widgets on the right, rotating widgets on the left.' },
+  top: { label: 'Top bar', desc: 'A slim bar of always-visible widgets across the top, rotating widgets below.' },
+  bottom: { label: 'Bottom bar', desc: 'A slim bar of always-visible widgets along the bottom, rotating widgets above.' },
+  grid: { label: 'Grid', desc: 'Every widget on screen at once, no rotation. Best on bigger screens.' },
+  focus: { label: 'Focus', desc: 'One widget at a time, full screen. Everything rotates, including the clock and weather.' },
+};
+
+window.PIDASH_APPLY_LAYOUT = function applyLayoutSettings(display) {
+  const root = document.documentElement;
+  const SIDE = { narrow: '20%', normal: '27%', wide: '36%' };
+  const SPACING = { tight: ['0.6rem', '0.7rem', '0.75rem 0.95rem'], normal: ['1.2rem', '1.4rem', '1.1rem 1.3rem'], roomy: ['1.8rem', '2.2rem', '1.5rem 1.8rem'] };
+  const RADIUS = { sharp: '0.25rem', normal: '1.1rem', round: '2rem' };
+  const sp = SPACING[display.spacing] || SPACING.normal;
+  root.style.setProperty('--side', SIDE[display.sidebarSize] || SIDE.normal);
+  root.style.setProperty('--gap', sp[0]);
+  root.style.setProperty('--pad', sp[1]);
+  root.style.setProperty('--cpad', sp[2]);
+  root.style.setProperty('--radius', RADIUS[display.corners] || RADIUS.normal);
+  root.dataset.transition = ['fade', 'slide', 'zoom', 'none'].includes(display.transition) ? display.transition : 'fade';
+  root.dataset.dots = display.dots === false ? 'off' : 'on';
+};

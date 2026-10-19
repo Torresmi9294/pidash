@@ -12,6 +12,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
 - **Plugin widgets**: drop a folder in and it appears in the admin. See [docs/WRITING_WIDGETS.md](docs/WRITING_WIDGETS.md)
 - **11 themes** (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) with custom accent and background colors, card styles, fonts, text size, and an automatic night theme
+- **6 layouts** (sidebar left/right, top bar, bottom bar, grid with everything on screen at once, focus), plus sidebar width, spacing, corner roundness and rotation transition (fade/slide/zoom)
 - Photo-slideshow background, portrait rotation, night dimming, live reload when you save
 - Runs from Pi Zero up to Pi 5, and on any x86 Linux box or Docker host
 

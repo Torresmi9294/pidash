@@ -139,6 +139,20 @@
       themes.map(([k, t]) => tile(k, t.label, [t.vars['--bg1'], t.vars['--bg2']], t.vars['--text'], t.vars['--accent'], current === k)));
   }
 
+  function layoutIcon(name) {
+    const sb = () => h('div', { class: 'sb' }, h('i'), h('i'));
+    if (name === 'grid') return h('div', { class: 'lay-ico grid' }, [1, 2, 3, 4].map(() => h('i')));
+    if (name === 'focus') return h('div', { class: 'lay-ico focus' }, h('i', { class: 'main' }));
+    return h('div', { class: `lay-ico ${name}` }, sb(), h('i', { class: 'main' }));
+  }
+
+  function layoutGrid(d) {
+    const current = window.PIDASH_LAYOUTS[d.layout] ? d.layout : 'sidebar-left';
+    return h('div', { class: 'ltiles' }, Object.entries(window.PIDASH_LAYOUTS).map(([k, l]) =>
+      h('button', { type: 'button', class: `ltile ${current === k ? 'sel' : ''}`, title: l.desc, onclick: () => { d.layout = k; touch(); render(); } },
+        layoutIcon(k), h('b', {}, l.label), h('small', {}, l.desc))));
+  }
+
   function viewDisplay() {
     const d = cfg.display;
     const F = (key, label, type, extra = {}) => field({ key, label, type, ...extra }, d);
@@ -154,6 +168,15 @@
         F('cardStyle', 'Card style', 'select', { options: [{ value: 'glass', label: 'Glass (translucent blur)' }, { value: 'solid', label: 'Solid' }, { value: 'flat', label: 'Outline only' }] }),
         F('font', 'Font', 'select', { options: fonts }),
         F('fontScale', 'Text size (%)', 'number', { placeholder: '100', help: '80-150. Use this to fit your screen or TV.' })),
+      h('div', { class: 'panel' }, h('h2', {}, 'Layout'),
+        h('p', { class: 'muted small' }, 'How the screen is arranged. "Always visible" widgets (set on the Widgets tab) go in the bar or sidebar; the rest rotate. On portrait screens the side-by-side layouts become a top bar automatically.'),
+        layoutGrid(d),
+        F('sidebarSize', 'Sidebar width (Sidebar left / right)', 'select', { options: [{ value: 'narrow', label: 'Narrow' }, { value: 'normal', label: 'Normal' }, { value: 'wide', label: 'Wide' }] }),
+        F('gridColumns', 'Grid columns (Grid layout)', 'select', { options: [{ value: 'auto', label: 'Automatic' }, { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }] }),
+        F('spacing', 'Spacing', 'select', { options: [{ value: 'tight', label: 'Tight - fits more' }, { value: 'normal', label: 'Normal' }, { value: 'roomy', label: 'Roomy' }] }),
+        F('corners', 'Corners', 'select', { options: [{ value: 'sharp', label: 'Sharp' }, { value: 'normal', label: 'Rounded' }, { value: 'round', label: 'Very round' }] }),
+        F('transition', 'Rotation transition', 'select', { options: [{ value: 'fade', label: 'Fade' }, { value: 'slide', label: 'Slide' }, { value: 'zoom', label: 'Zoom' }, { value: 'none', label: 'None (instant)' }] }),
+        F('dots', 'Show the page dots at the bottom', 'checkbox', { default: true })),
       h('div', { class: 'panel' }, h('h2', {}, 'Night'),
         h('p', { class: 'muted small' }, 'Between the night hours below you can switch to a different theme and/or dim the screen.'),
         F('nightMode', 'Dim the screen at night', 'checkbox'),
