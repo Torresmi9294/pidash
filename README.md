@@ -6,7 +6,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Weather** from Open-Meteo (no key) or OpenWeatherMap (your key)
 - **Reminders** managed from the admin page
 - **ESPN Fantasy** league standings and matchups with team logos (football, baseball, basketball, hockey)
-- **News** from any RSS/Atom feeds
+- **News** from any RSS/Atom feeds, with thumbnails when the feed includes images, an optional featured top story, and short summaries
 - **Sports Highlights**: ESPN headlines and video clips for NFL, NBA, MLB, NHL, college, WNBA, MLS or Premier League, with optional muted clip playback
 - **Verse of the Day**: Bible Gateway's daily verse in NIV/ESV/NKJV/NLT and more, a curated daily list in public-domain translations, or your own list of verses
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
@@ -101,7 +101,7 @@ Enter your league ID (the `leagueId=` number in your league URL) and sport. For 
 
 ### Reminders and news
 
-Reminders are added on the admin Reminders tab (instant). The News widget takes any list of RSS/Atom URLs.
+Reminders are added on the admin Reminders tab (instant). The News widget takes any list of RSS/Atom URLs. Thumbnails are picked up from the places feeds put them (`media:thumbnail`, `media:content`, image enclosures, `itunes:image`, or the first image in the article HTML), cached on the server, and simply omitted when a feed has none. Duplicate headlines are shown once.
 
 ### Health
 

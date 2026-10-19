@@ -18,6 +18,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
 const TTL = 7 * 86400e3;       // refetch after a week
 const FAIL_TTL = 10 * 60e3;    // do not hammer a broken URL
 const TIMEOUT = 10000;
+const KEEP = 14 * 86400e3;     // delete cached files nobody has touched for two weeks
 const ESPN_HOST = /(^|\.)(espn\.com|espncdn\.com|espn\.go\.com)$/i;
 
 const allowed = new Map();  // widgetId -> { urls:Set, cookie:string }
@@ -115,8 +116,21 @@ function readCache(key) {
   }
 }
 
+let lastPrune = 0;
+function prune() {
+  if (Date.now() - lastPrune < 6 * 3600e3) return;
+  lastPrune = Date.now();
+  try {
+    for (const f of fs.readdirSync(DIR)) {
+      const p = path.join(DIR, f);
+      if (Date.now() - fs.statSync(p).mtimeMs > KEEP) fs.unlinkSync(p);
+    }
+  } catch { /* nothing cached yet */ }
+}
+
 function writeCache(key, type, buf) {
   fs.mkdirSync(DIR, { recursive: true });
+  prune();
   fs.writeFileSync(path.join(DIR, `${key}.bin`), buf);
   fs.writeFileSync(path.join(DIR, `${key}.json`), JSON.stringify({ type, at: Date.now() }));
 }
@@ -174,4 +188,4 @@ async function warm(widgetId, urls) {
   await Promise.all([worker(), worker(), worker()]);
 }
 
-module.exports = { allow, proxyUrl, get, warm, normalize, _internals: { isPrivateIp, sniff, setLookup: (fn) => { lookup = fn; }, reset: () => { allowed.clear(); failures.clear(); } } };
+module.exports = { prune, allow, proxyUrl, get, warm, normalize, _internals: { isPrivateIp, sniff, setLookup: (fn) => { lookup = fn; }, reset: () => { allowed.clear(); failures.clear(); } } };

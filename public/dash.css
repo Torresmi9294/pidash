@@ -252,3 +252,21 @@ body {
 .card-sports-highlights .card-body { display: flex; flex-direction: column; }
 .card-sports-highlights .sh { flex: 1; min-height: 8rem; }
 .card-sports-highlights.sidebar .sh { flex: none; height: 11rem; }
+
+/* ---- rss thumbnails ---- */
+.rss-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+.rss.with-thumb { display: flex; gap: 0.9rem; align-items: center; }
+.rss-thumb { flex: none; width: 7.2rem; aspect-ratio: 16 / 10; border-radius: 0.55rem; overflow: hidden; background: rgba(127, 127, 127, 0.18); display: grid; place-items: center; font-size: 1.4rem; }
+.rss-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rss-thumb.empty { opacity: 0.45; }
+.rss-body { min-width: 0; }
+.rss-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rss-sum { font-size: 0.85rem; color: var(--muted); margin-top: 0.15rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rss-hero { position: relative; flex: 0 0 42%; min-height: 8rem; border-radius: 0.9rem; overflow: hidden; background: rgba(0, 0, 0, 0.3); margin-bottom: 0.6rem; }
+.rss-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.rss-hero-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 3rem 1.1rem 0.8rem; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, 0.85)); }
+.rss-hero-title { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+.rss-hero .rss-sum { color: #e0e0e0; }
+.rss-hero small { color: #d0d0d0; }
+.rss-wrap.sidebar .rss-thumb { width: 4.6rem; }
+.rss-wrap.sidebar .rss { font-size: 0.95rem; }
