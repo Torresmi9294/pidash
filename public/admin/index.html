@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>PiDash Admin</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <header>
+    <h1>📅 PiDash <span>admin</span></h1>
+    <nav id="tabs"></nav>
+    <div class="actions">
+      <a class="btn ghost" href="/" target="_blank" rel="noopener">Open display ↗</a>
+      <button id="save" class="btn primary" disabled>Save &amp; apply</button>
+    </div>
+  </header>
+  <div id="toast" role="status"></div>
+  <main id="view"><p class="muted">Loading…</p></main>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

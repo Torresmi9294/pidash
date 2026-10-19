@@ -1,0 +1,21 @@
+{
+  "name": "pidash",
+  "version": "1.0.0",
+  "description": "A self-hosted smart-display dashboard (DAKboard / MagicMirror style) for Raspberry Pi with rotating, pluggable widgets.",
+  "license": "MIT",
+  "private": true,
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "fast-xml-parser": "^4.5.1",
+    "node-ical": "^0.20.1"
+  }
+}

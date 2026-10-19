@@ -1,0 +1,12 @@
+services:
+  pidash:
+    image: ghcr.io/torresmi9294/pidash:latest
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      # Used for "today" / all-day event boundaries. Use your own IANA zone.
+      TZ: America/New_York
