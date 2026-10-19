@@ -143,6 +143,7 @@
     const sb = () => h('div', { class: 'sb' }, h('i'), h('i'));
     if (name === 'grid') return h('div', { class: 'lay-ico grid' }, [1, 2, 3, 4].map(() => h('i')));
     if (name === 'focus') return h('div', { class: 'lay-ico focus' }, h('i', { class: 'main' }));
+    if (name === 'grid-rotate') return h('div', { class: 'lay-ico grid-rotate' }, h('i', { class: 'wide' }), h('i'), h('i'));
     return h('div', { class: `lay-ico ${name}` }, sb(), h('i', { class: 'main' }));
   }
 
@@ -151,6 +152,49 @@
     return h('div', { class: 'ltiles' }, Object.entries(window.PIDASH_LAYOUTS).map(([k, l]) =>
       h('button', { type: 'button', class: `ltile ${current === k ? 'sel' : ''}`, title: l.desc, onclick: () => { d.layout = k; touch(); render(); } },
         layoutIcon(k), h('b', {}, l.label), h('small', {}, l.desc))));
+  }
+
+  // Rotating grid: choose which widgets each pane cycles through.
+  function paneEditor(d) {
+    const enabled = cfg.widgets.filter((w) => w.enabled);
+    const label = (w) => `${(types.find((t) => t.type === w.type) || { name: w.type }).name} (${w.id})`;
+    const panes = d.gridPanes || (d.gridPanes = []);
+    const sizeOpts = Object.entries(window.PIDASH_PANE_SIZES);
+    const inAny = new Set(panes.flatMap((p) => p.widgets));
+    const missing = enabled.filter((w) => !inAny.has(w.id));
+    const swap = (list, i, j) => { if (j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; touch(); render(); };
+
+    const paneCard = (p, i) => {
+      const sel = p.widgets.filter((id) => enabled.some((w) => w.id === id));
+      const rows = [
+        ...sel.map((id, k) => {
+          const w = enabled.find((x) => x.id === id);
+          return h('div', { class: 'row', style: 'margin:4px 0' },
+            h('label', { class: 'chk grow', style: 'margin:0' }, h('input', { type: 'checkbox', checked: true, onchange: () => { p.widgets = p.widgets.filter((x) => x !== id); touch(); render(); } }), label(w)),
+            h('button', { class: 'btn sm', title: 'Earlier in the rotation', onclick: () => { const a = p.widgets.indexOf(id); const b = p.widgets.indexOf(sel[k - 1]); if (k > 0) swap(p.widgets, a, b); } }, '\u2191'),
+            h('button', { class: 'btn sm', title: 'Later in the rotation', onclick: () => { const a = p.widgets.indexOf(id); const b = p.widgets.indexOf(sel[k + 1]); if (k < sel.length - 1) swap(p.widgets, a, b); } }, '\u2193'));
+        }),
+        ...enabled.filter((w) => !sel.includes(w.id)).map((w) =>
+          h('label', { class: 'chk', style: 'margin:4px 0;opacity:.75' }, h('input', { type: 'checkbox', onchange: () => { p.widgets.push(w.id); touch(); render(); } }), label(w))),
+      ];
+      return h('div', { class: 'wcard' },
+        h('div', { class: 'head' },
+          h('div', { class: 'title', style: 'cursor:default' }, `Pane ${i + 1}`, h('small', {}, sel.length > 1 ? `rotates ${sel.length} widgets` : sel.length === 1 ? 'static' : 'empty')),
+          h('select', { style: 'width:auto', title: 'Size in the grid', onchange: (e) => { p.size = e.target.value; touch(); } }, sizeOpts.map(([k, s]) => h('option', { value: k, selected: (p.size || 's') === k }, s.label))),
+          h('input', { type: 'number', min: 5, placeholder: `${d.rotateSeconds || 20} s`, title: 'Seconds per widget (blank = default)', value: p.seconds || '', style: 'width:90px', oninput: (e) => { p.seconds = e.target.value === '' ? '' : Number(e.target.value); touch(); } }),
+          h('button', { class: 'btn sm', title: 'Move up', onclick: () => swap(panes, i, i - 1) }, '\u2191'),
+          h('button', { class: 'btn sm', title: 'Move down', onclick: () => swap(panes, i, i + 1) }, '\u2193'),
+          h('button', { class: 'btn sm danger', onclick: () => { panes.splice(i, 1); touch(); render(); } }, 'Remove')),
+        h('div', { class: 'body' }, rows.length ? rows : h('p', { class: 'muted' }, 'Enable some widgets on the Widgets tab first.')));
+    };
+
+    return h('div', { class: 'panel' }, h('h2', {}, 'Grid panes'),
+      h('p', { class: 'muted small' }, 'Each pane is one cell of the grid. A pane with several widgets rotates through them in the order shown (use the arrows); with one widget it stays put. Wide/tall/large panes take more room, which suits the calendar. A widget can appear in more than one pane. A widget\'s own "Seconds on screen" setting overrides the pane timing.'),
+      panes.length ? panes.map(paneCard) : h('p', { class: 'muted' }, 'No panes yet, so PiDash uses a suggested arrangement: each always-visible widget gets its own pane, and all the rotating widgets share one. Start from it and adjust:'),
+      h('div', { class: 'row', style: 'margin-top:10px' },
+        h('button', { class: 'btn primary', onclick: () => { panes.push({ widgets: [], size: 's', seconds: '' }); touch(); render(); } }, 'Add pane'),
+        h('button', { class: 'btn', onclick: () => { d.gridPanes = window.PIDASH_SUGGEST_PANES(cfg.widgets); touch(); render(); } }, panes.length ? 'Reset to suggested' : 'Start from suggested')),
+      panes.length && missing.length ? h('p', { class: 'small', style: 'color:var(--bad)' }, `Not shown on the grid: ${missing.map(label).join(', ')}`) : null);
   }
 
   function viewDisplay() {
@@ -177,6 +221,7 @@
         F('corners', 'Corners', 'select', { options: [{ value: 'sharp', label: 'Sharp' }, { value: 'normal', label: 'Rounded' }, { value: 'round', label: 'Very round' }] }),
         F('transition', 'Rotation transition', 'select', { options: [{ value: 'fade', label: 'Fade' }, { value: 'slide', label: 'Slide' }, { value: 'zoom', label: 'Zoom' }, { value: 'none', label: 'None (instant)' }] }),
         F('dots', 'Show the page dots at the bottom', 'checkbox', { default: true })),
+      d.layout === 'grid-rotate' ? paneEditor(d) : null,
       h('div', { class: 'panel' }, h('h2', {}, 'Night'),
         h('p', { class: 'muted small' }, 'Between the night hours below you can switch to a different theme and/or dim the screen.'),
         F('nightMode', 'Dim the screen at night', 'checkbox'),
@@ -194,7 +239,7 @@
         F('rotation', 'Screen rotation (degrees)', 'select', { options: [0, 90, 180, 270].map((v) => ({ value: v, label: `${v}°` })), help: 'For portrait-mounted screens.' }),
         F('background', 'Background', 'select', { options: [{ value: 'gradient', label: 'Gradient' }, { value: 'photos', label: 'Photo slideshow' }], help: 'Photos: put images in <data dir>/backgrounds on the Pi (JPG/PNG/WebP).' }),
         F('photoSeconds', 'Seconds per photo', 'number')),
-    ];
+    ].filter(Boolean);
   }
 
   // ---- google ------------------------------------------------------------

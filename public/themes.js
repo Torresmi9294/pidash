@@ -52,6 +52,7 @@ window.PIDASH_LAYOUTS = {
   top: { label: 'Top bar', desc: 'A slim bar of always-visible widgets across the top, rotating widgets below.' },
   bottom: { label: 'Bottom bar', desc: 'A slim bar of always-visible widgets along the bottom, rotating widgets above.' },
   grid: { label: 'Grid', desc: 'Every widget on screen at once, no rotation. Best on bigger screens.' },
+  'grid-rotate': { label: 'Rotating grid', desc: 'A grid where each cell (pane) rotates through the widgets you choose.' },
   focus: { label: 'Focus', desc: 'One widget at a time, full screen. Everything rotates, including the clock and weather.' },
 };
 
@@ -68,4 +69,23 @@ window.PIDASH_APPLY_LAYOUT = function applyLayoutSettings(display) {
   root.style.setProperty('--radius', RADIUS[display.corners] || RADIUS.normal);
   root.dataset.transition = ['fade', 'slide', 'zoom', 'none'].includes(display.transition) ? display.transition : 'fade';
   root.dataset.dots = display.dots === false ? 'off' : 'on';
+};
+
+// Panes for the "Rotating grid" layout. Sizes are columns x rows in the grid.
+window.PIDASH_PANE_SIZES = {
+  s: { label: '1 \u00D7 1', cols: 1, rows: 1 },
+  w: { label: '2 \u00D7 1 (wide)', cols: 2, rows: 1 },
+  t: { label: '1 \u00D7 2 (tall)', cols: 1, rows: 2 },
+  l: { label: '2 \u00D7 2 (large)', cols: 2, rows: 2 },
+};
+
+// Starting point when no panes are configured: every "always visible" widget gets its own pane and
+// all the rotating widgets share one wide pane.
+window.PIDASH_SUGGEST_PANES = function suggestPanes(widgets) {
+  const on = widgets.filter((w) => w.enabled !== false);
+  const side = on.filter((w) => w.slot === 'sidebar');
+  const rot = on.filter((w) => w.slot !== 'sidebar');
+  const panes = side.map((w) => ({ widgets: [w.id], size: 's', seconds: '' }));
+  if (rot.length) panes.push({ widgets: rot.map((w) => w.id), size: side.length >= 2 ? 'w' : 'l', seconds: '' });
+  return panes;
 };

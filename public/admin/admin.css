@@ -58,3 +58,8 @@ code { background:var(--bg); padding:1px 5px; border-radius:5px; font-size:13px;
 .lay-ico.bottom { grid-template-rows:1fr 28%; } .lay-ico.bottom .sb { order:2; flex-direction:row; }
 .lay-ico.grid { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; } .lay-ico.grid i { background:var(--accent); opacity:.55; }
 .lay-ico.focus { grid-template-columns:1fr; }
+
+.lay-ico.grid-rotate { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+.lay-ico.grid-rotate i { background:var(--accent); opacity:.55; }
+.lay-ico.grid-rotate i.wide { grid-column:span 2; opacity:.8; position:relative; }
+.lay-ico.grid-rotate i.wide::after { content:'BB'; position:absolute; right:5px; top:0; font-size:10px; line-height:14px; color:#fff; font-style:normal; }

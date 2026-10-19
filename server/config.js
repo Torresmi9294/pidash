@@ -26,6 +26,7 @@ const DEFAULTS = () => ({
     transition: 'fade',
     dots: true,
     gridColumns: 'auto',
+    gridPanes: [],
     timeFormat: '12h',
     units: 'imperial',
     locale: '',

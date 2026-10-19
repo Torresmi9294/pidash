@@ -73,13 +73,13 @@
     }
   }
 
-  async function buildCard(w, slot, tile = false) {
+  async function buildCard(w, slot, mode = '') {
     if (!registry[w.type] && !(await loadClient(w.type) && registry[w.type])) {
       return { card: h('section', { class: `card ${slot}` }, h('div', { class: 'msg' }, `Widget "${w.type}" has no client script.`)), w, def: null, start() {} };
     }
     const def = registry[w.type];
     const body = h('div', { class: 'card-body' });
-    const card = h('section', { class: `card card-${w.type} ${tile ? `tile ${slot === 'sidebar' ? 'sidebar' : ''}` : slot}` }, def.chrome === false ? null : h('h2', { class: 'card-title' }, def.title || w.name), body);
+    const card = h('section', { class: `card card-${w.type} ${mode === 'tile' ? `tile ${slot === 'sidebar' ? 'sidebar' : ''}` : mode === 'pane' ? `rotate ${slot === 'sidebar' ? 'sidebar' : ''}` : slot}` }, def.chrome === false ? null : h('h2', { class: 'card-title' }, def.title || w.name), body);
     const c = { w, def, card, body, loaded: false, ctx: { id: w.id, options: w.options || {}, display, slot, fmt: makeFmt(display), h } };
     // Called once the card is attached to the page (widgets such as the clock check el.isConnected).
     c.start = () => {
@@ -89,15 +89,14 @@
     return c;
   }
 
-  function startRotation(slides) {
-    const dots = document.getElementById('dots');
+  function startRotation(slides, dots = document.getElementById('dots'), paneSeconds = 0) {
     dots.replaceChildren(...slides.map(() => h('i')));
     let i = 0;
     const show = (n) => {
       slides.forEach((s, k) => s.card.classList.toggle('active', k === n));
       [...dots.children].forEach((d, k) => d.classList.toggle('on', k === n));
     };
-    const dur = (k) => Math.max(5, Number(slides[k].w.options.durationSec) || display.rotateSeconds || 20) * 1000;
+    const dur = (k) => Math.max(5, Number(slides[k].w.options.durationSec) || Number(paneSeconds) || display.rotateSeconds || 20) * 1000;
     show(0);
     if (slides.length < 2) {
       dots.replaceChildren();
@@ -126,11 +125,12 @@
     let name = PIDASH_LAYOUTS[display.layout] ? display.layout : 'sidebar-left';
     if (portrait && (name === 'sidebar-left' || name === 'sidebar-right')) name = 'top';
     layoutEl.dataset.layout = name;
-    if (name === 'grid') {
+    if (name === 'grid' || name === 'grid-rotate') {
       const pref = Number(display.gridColumns);
       let cols = pref >= 1 ? pref : gridCount <= 1 ? 1 : gridCount <= 4 ? 2 : 3;
       if (portrait) cols = Math.min(cols, 2);
       layoutEl.style.setProperty('--cols', String(cols));
+      layoutEl.dataset.cols = String(cols);
       document.documentElement.style.setProperty('--gscale', gridCount >= 7 ? '0.72' : gridCount >= 5 ? '0.82' : gridCount >= 3 ? '0.92' : '1');
     }
     document.documentElement.dataset.lay = name;
@@ -218,6 +218,43 @@
     let side = cfg.widgets.filter((w) => w.slot === 'sidebar');
     let rot = cfg.widgets.filter((w) => w.slot !== 'sidebar');
 
+    if (layoutName === 'grid-rotate') {
+      // A grid of panes; each pane rotates through the widgets chosen for it in the admin.
+      sidebar.remove();
+      stage.remove();
+      const byId = new Map(cfg.widgets.map((w) => [w.id, w]));
+      const configured = Array.isArray(display.gridPanes) && display.gridPanes.length ? display.gridPanes : PIDASH_SUGGEST_PANES(cfg.widgets);
+      const panes = configured
+        .map((p) => ({ ...p, list: (p.widgets || []).map((id) => byId.get(id)).filter(Boolean) }))
+        .filter((p) => p.list.length);
+      gridCount = panes.reduce((n, p) => n + ((PIDASH_PANE_SIZES[p.size] || PIDASH_PANE_SIZES.s).cols * (PIDASH_PANE_SIZES[p.size] || PIDASH_PANE_SIZES.s).rows), 0);
+      applyLayout();
+      if (!panes.length) layoutEl.append(h('div', { class: 'msg' }, 'No panes configured. Open /admin on this device (Display > Layout) to set up the grid.'));
+      for (const p of panes) {
+        const paneEl = h('div', { class: `pane span-${PIDASH_PANE_SIZES[p.size] ? p.size : 's'}` });
+        layoutEl.append(paneEl);
+        const slides = [];
+        for (const w of p.list) {
+          const c = await buildCard(w, w.slot === 'sidebar' ? 'sidebar' : 'rotate', 'pane');
+          paneEl.append(c.card);
+          c.start();
+          slides.push(c);
+        }
+        if (slides.length > 1) {
+          const dots = h('div', { class: 'pane-dots' });
+          paneEl.append(dots);
+          startRotation(slides, dots, p.seconds);
+        } else {
+          slides[0].card.classList.add('active');
+        }
+      }
+      document.getElementById('dots').replaceChildren();
+      initBackground();
+      initNightMode();
+      liveReload();
+      return;
+    }
+
     if (layoutName === 'grid') {
       // Everything on screen at once: no sidebar/stage, no rotation.
       sidebar.remove();
@@ -227,7 +264,7 @@
       applyLayout();
       if (!all.length) layoutEl.append(h('div', { class: 'msg' }, 'No widgets enabled. Open /admin on this device to add some.'));
       for (const w of all) {
-        const c = await buildCard(w, w.slot === 'sidebar' ? 'sidebar' : 'rotate', true);
+        const c = await buildCard(w, w.slot === 'sidebar' ? 'sidebar' : 'rotate', 'tile');
         layoutEl.append(c.card);
         c.start();
       }

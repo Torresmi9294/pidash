@@ -47,9 +47,22 @@ function maskConfig(cfg) {
   return out;
 }
 
+// Rotating-grid panes: keep only well-formed entries.
+function sanitizePanes(list) {
+  return (Array.isArray(list) ? list : []).slice(0, 100)
+    .map((p) => ({
+      widgets: (Array.isArray(p && p.widgets) ? p.widgets : []).map(String).slice(0, 20),
+      size: ['s', 'w', 't', 'l'].includes(p && p.size) ? p.size : 's',
+      seconds: Number(p && p.seconds) >= 5 ? Math.min(Number(p.seconds), 3600) : '',
+    }))
+    .filter((p) => p.widgets.length)
+    .slice(0, 12);
+}
+
 // ...and put them back when the browser sends the mask unchanged.
 function unmaskInto(incoming, existing) {
   const next = config.merge(existing, { display: incoming.display || {} });
+  if (incoming.display && 'gridPanes' in incoming.display) next.display.gridPanes = sanitizePanes(incoming.display.gridPanes);
   if (incoming.google) {
     const g = incoming.google;
     next.google.clientId = String(g.clientId || '').trim();

@@ -12,7 +12,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
 - **Plugin widgets**: drop a folder in and it appears in the admin. See [docs/WRITING_WIDGETS.md](docs/WRITING_WIDGETS.md)
 - **11 themes** (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) with custom accent and background colors, card styles, fonts, text size, and an automatic night theme
-- **6 layouts** (sidebar left/right, top bar, bottom bar, grid with everything on screen at once, focus), plus sidebar width, spacing, corner roundness and rotation transition (fade/slide/zoom)
+- **7 layouts** (sidebar left/right, top bar, bottom bar, grid with everything on screen at once, **rotating grid** where you choose what each pane cycles through, focus), plus sidebar width, spacing, corner roundness and rotation transition (fade/slide/zoom)
 - Photo-slideshow background, portrait rotation, night dimming, live reload when you save
 - Runs from Pi Zero up to Pi 5, and on any x86 Linux box or Docker host
 
@@ -107,6 +107,10 @@ Reminders are added on the admin Reminders tab (instant). The News widget takes 
 ### Health
 
 Apple Health and Android Health Connect keep data on the phone and offer no cloud API, so your phone **pushes** a daily summary to PiDash. Open **Admin → Health** for your endpoint, a private token, ready-to-copy `curl` example, and iPhone Shortcut / Health Auto Export / Android instructions, then add the **Health** widget. Use the *Send sample data* button to preview the widget before your phone is connected. The supported fields are `steps, activeCalories, exerciseMinutes, standHours, heartRate, restingHeartRate, sleepHours, bloodOxygen, distanceKm/Mi, weightKg/Lb`. Send a `person` name to track several people (one widget each).
+
+### Rotating grid
+
+Pick **Admin → Display → Layout → Rotating grid**, then build your panes: each pane is one cell of the grid. Tick the widgets a pane should cycle through (reorder them with the arrows), choose its size (1×1, wide, tall or large) and how long each widget stays. A pane with one widget simply stays put. Start from the suggested arrangement (each always-visible widget alone, rotating widgets together in one wide pane) and adjust from there.
 
 ### Highlights
 
