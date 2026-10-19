@@ -38,18 +38,42 @@ function currentSeason(sport) {
 
 const teamName = (t) => t.name || [t.location, t.nickname].filter(Boolean).join(' ') || `Team ${t.id}`;
 
+// Pasted cookies often carry stray quotes/newlines/spaces, which make the request invalid.
+const clean = (v) => String(v || '').replace(/^\s*(?:swid|espn_s2)\s*=/i, '').replace(/["'\s]/g, '');
+const cleanSwid = (v) => {
+  const s = clean(v);
+  return s && !s.startsWith('{') ? `{${s}}` : s;
+};
+
 exports.data = async (o) => {
   if (!o.leagueId) throw new Error('Enter your ESPN league ID in the widget settings.');
+  const leagueId = String(o.leagueId).replace(/\D/g, '');
+  if (!leagueId) throw new Error('League ID should be the number from your league URL (leagueId=...).');
   const sport = o.sport || 'ffl';
   const season = Number(o.season) || currentSeason(sport);
   const url =
-    `https://lite-api.fantasy.espn.com/apis/v3/games/${sport}/seasons/${season}/segments/0/leagues/${encodeURIComponent(o.leagueId)}` +
+    `https://lm-api-reads.fantasy.espn.com/apis/v3/games/${sport}/seasons/${season}/segments/0/leagues/${leagueId}` +
     '?view=mTeam&view=mMatchupScore&view=mSettings';
   const headers = { 'user-agent': 'Mozilla/5.0 PiDash/1.0', accept: 'application/json' };
-  if (o.swid || o.espnS2) headers.cookie = `SWID=${o.swid || ''}; espn_s2=${o.espnS2 || ''}`;
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
-  if (res.status === 401 || res.status === 403) throw new Error('ESPN says this league is private - add your SWID and espn_s2 cookies.');
-  if (!res.ok) throw new Error(`ESPN returned HTTP ${res.status} (check the league ID and season).`);
+  const swid = cleanSwid(o.swid);
+  const s2 = clean(o.espnS2);
+  if (swid || s2) headers.cookie = `SWID=${swid}; espn_s2=${s2}`;
+
+  let res;
+  try {
+    res = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
+  } catch (e) {
+    throw new Error(`Could not reach ESPN (${(e.cause && e.cause.message) || e.message}). Check the server's internet/DNS access.`);
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(
+      swid || s2
+        ? 'ESPN rejected the SWID/espn_s2 cookies (they expire - copy fresh ones) or this account is not in the league.'
+        : 'ESPN says this league is private (or the ID is wrong) - add your SWID and espn_s2 cookies.',
+    );
+  }
+  if (res.status === 404) throw new Error(`ESPN has no ${sport} league ${leagueId} for season ${season}. Check the league ID, sport and season.`);
+  if (!res.ok) throw new Error(`ESPN returned HTTP ${res.status}.`);
   const d = await res.json();
 
   const teams = new Map((d.teams || []).map((t) => [t.id, t]));
@@ -75,7 +99,7 @@ exports.data = async (o) => {
     .map((m) => ({ home: side(m.home), away: side(m.away) }));
 
   return {
-    leagueName: (d.settings && d.settings.name) || `League ${o.leagueId}`,
+    leagueName: (d.settings && d.settings.name) || `League ${leagueId}`,
     season,
     period,
     show: o.show || 'both',
@@ -85,4 +109,4 @@ exports.data = async (o) => {
   };
 };
 
-exports._internals = { currentSeason };
+exports._internals = { currentSeason, clean, cleanSwid };

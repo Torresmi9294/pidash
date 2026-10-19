@@ -153,3 +153,35 @@ test('user widgets in the data dir are discovered and usable', async () => {
   assert.equal((await j('/api/widgets/hello-1/data')).body.greeting, 'Hello, Pi!');
   assert.equal((await fetch(`${base}/widget-client/hello.js`)).status, 200);
 });
+
+test('espn: parses a league response and sends cleaned cookies to the right host', async () => {
+  const espn = require('../widgets/espn-fantasy/server');
+  const realFetch = global.fetch;
+  let seen;
+  global.fetch = async (url, init) => {
+    seen = { url: String(url), cookie: init.headers.cookie };
+    return new Response(JSON.stringify({
+      settings: { name: 'The League' },
+      status: { currentMatchupPeriod: 5 },
+      teams: [
+        { id: 1, name: 'Alpha', record: { overall: { wins: 3, losses: 1, ties: 0, percentage: 0.75, pointsFor: 400.55 } } },
+        { id: 2, name: 'Bravo', record: { overall: { wins: 1, losses: 3, ties: 0, percentage: 0.25, pointsFor: 350 } } },
+      ],
+      schedule: [
+        { matchupPeriodId: 5, home: { teamId: 1, totalPoints: 100.24 }, away: { teamId: 2, totalPoints: 90 } },
+        { matchupPeriodId: 4, home: { teamId: 2, totalPoints: 1 }, away: { teamId: 1, totalPoints: 2 } },
+      ],
+    }), { status: 200 });
+  };
+  try {
+    const d = await espn.data({ sport: 'ffl', leagueId: ' 12345 ', season: '2026', swid: ' "ABC-1" ', espnS2: "'tok en'" });
+    assert.match(seen.url, /^https:\/\/lm-api-reads\.fantasy\.espn\.com\/apis\/v3\/games\/ffl\/seasons\/2026\/segments\/0\/leagues\/12345\?/);
+    assert.equal(seen.cookie, 'SWID={ABC-1}; espn_s2=token');
+    assert.equal(d.leagueName, 'The League');
+    assert.deepEqual(d.standings.map((t) => [t.rank, t.name, t.wins]), [[1, 'Alpha', 3], [2, 'Bravo', 1]]);
+    assert.equal(d.matchups.length, 1);
+    assert.equal(d.matchups[0].home.score, 100.2);
+  } finally {
+    global.fetch = realFetch;
+  }
+});
