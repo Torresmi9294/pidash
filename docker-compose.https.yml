@@ -1,0 +1,25 @@
+# Optional: put PiDash behind Caddy for automatic HTTPS on your own domain.
+#
+#   1. Point a DNS name at this server and open ports 80 and 443.
+#   2. Set PIDASH_DOMAIN=dash.example.com in .env
+#   3. docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build
+#
+# With HTTPS you can use  https://dash.example.com/api/google/callback  as the Google
+# OAuth redirect URI (Admin > Google > Redirect URI), so sign-in works from any device.
+services:
+  pidash:
+    ports: !reset []   # only Caddy is exposed
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from ${PIDASH_DOMAIN:?set PIDASH_DOMAIN in .env} --to pidash:8080
+    volumes:
+      - caddy-data:/data
+    depends_on:
+      - pidash
+
+volumes:
+  caddy-data:

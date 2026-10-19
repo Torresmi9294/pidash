@@ -59,10 +59,11 @@ Uninstall with `sudo ./scripts/uninstall.sh` (add `--purge` to also delete setti
 ### Docker (any machine, server only)
 
 ```bash
-docker compose up -d        # builds locally; multi-arch images are also published to ghcr.io
+cp .env.example .env         # set TZ so "today" is correct
+docker compose up -d --build
 ```
 
-Edit `TZ` in [docker-compose.yml](docker-compose.yml) so "today" is correct. Data lives in `./data`. Open `http://<host>:8080/admin/`.
+Open `http://<host>:8080/` for the display and `/admin/` for settings, from any browser. Data lives in a Docker volume. See [docs/DOCKER.md](docs/DOCKER.md) for upgrades, backups, Google sign-in on a server, and optional automatic HTTPS (Caddy overlay).
 
 ### Run from source
 
@@ -100,7 +101,7 @@ Reminders are added on the admin Reminders tab (instant). The News widget takes 
 
 ### Photo background
 
-Set Display → Background to *Photo slideshow* and copy JPG/PNG/WebP files into `/var/lib/pidash/data/backgrounds/` (Docker: `./data/backgrounds/`).
+Set Display → Background to *Photo slideshow* and copy JPG/PNG/WebP files into `/var/lib/pidash/data/backgrounds/` (Docker: see [docs/DOCKER.md](docs/DOCKER.md)).
 
 ## Security
 
