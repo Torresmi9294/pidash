@@ -259,3 +259,33 @@ test('fit: a tiny scale-independent clip (like an image frame) does not drag the
   // ...but genuinely too-much content with the same quirk still floors instead of jumping to the maximum
   assert.equal(Fit.card(fakeBody({ natural: 100000, client: 50, quirk: true })), 0.35);
 });
+
+test('fit: an overlay pushed out of the TOP of its frame is detected (scrollHeight cannot see that)', () => {
+  const Fit = loadFit();
+  Fit.setMode('fill');
+  const state = { s: 1 };
+  // A 100px frame; its text overlay is bottom-anchored and 200px tall at scale 1, so it pokes out of the top once s > 0.5
+  const frame = { getBoundingClientRect: () => ({ top: 0, bottom: 100, left: 0, right: 400 }) };
+  const overlay = {
+    parentElement: frame, children: [], hasAttribute: () => false, querySelectorAll: () => [],
+    scrollHeight: 0, clientHeight: 0, scrollWidth: 0, clientWidth: 0,
+    getBoundingClientRect: () => ({ top: 100 - 200 * state.s, bottom: 100, left: 0, right: 400 }),
+  };
+  const body = {
+    isConnected: true, clientHeight: 100, clientWidth: 400, scrollHeight: 10, scrollWidth: 10, dataset: {}, children: [],
+    style: { setProperty: (_k, v) => { state.s = parseFloat(/\*\s*([\d.]+)\)/.exec(v)[1]); }, removeProperty: () => { state.s = 1; } },
+    removeAttribute() {}, setAttribute() {}, hasAttribute: () => false,
+    querySelectorAll: (sel) => (sel === '[data-fit-bounds]' ? [overlay] : []),
+  };
+  const s = Fit.card(body);
+  assert.ok(s > 0.45 && s <= 0.51, `scale must shrink until the overlay is inside its frame (~0.5), got ${s}`);
+  assert.ok(100 - 200 * s >= -1, 'overlay top is inside the frame');
+});
+
+test('news hero keeps its headline in the frame by construction', () => {
+  const css = pub('dash.css');
+  const rule = (sel) => (css.split('\n').find((l) => l.startsWith(`${sel} {`)) || '');
+  assert.ok(!/position:\s*absolute/.test(rule('.rss-hero-text')), 'headline must be in normal flow so the hero grows to hold it');
+  assert.match(rule('.rss-hero'), /min-height:\s*min-content/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'widgets', 'rss', 'client.js'), 'utf8'), /'data-fit-bounds': true/);
+});

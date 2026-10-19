@@ -47,7 +47,7 @@ function listView(el, d, { h, options, slot }) {
     img.addEventListener('error', () => img.remove());
     parts.push(
       h('div', { class: 'rss-hero' }, img,
-        h('div', { class: 'rss-hero-text' }, h('div', { class: 'rss-hero-title' }, f.title), f.summary ? h('div', { class: 'rss-sum' }, f.summary) : null, h('small', {}, rssMeta(f)))),
+        h('div', { class: 'rss-hero-text', 'data-fit-bounds': true }, h('div', { class: 'rss-hero-title' }, f.title), f.summary ? h('div', { class: 'rss-sum' }, f.summary) : null, h('small', {}, rssMeta(f)))),
       ...d.items.slice(1).map(row));
   } else {
     parts.push(...d.items.map(row));

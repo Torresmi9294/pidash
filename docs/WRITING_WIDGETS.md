@@ -76,6 +76,7 @@ PiDash scales each widget's contents to its cell so nothing is cut off: down whe
 - Opt out or tune in `Dash.register`: `fit: false` for widgets that fill their cell themselves (photos/video), or `fit: (options) => ...` to decide per widget instance; `fitMax: 2.5` to let a widget grow larger than the default 1.6x; `fitFloor: 0.8` for list widgets so text stays that large and whole items are hidden instead of shrinking further.
 - `replaceChildren()` is patched to ignore `null`/`false` and to accept arrays, so conditional children are safe.
 - Anything with `overflow: hidden` that clips content counts as "doesn't fit", so avoid hiding overflow on purpose.
+- Text laid over a picture should be **in normal flow** inside its frame (not `position: absolute; bottom: 0`), so the frame grows to hold it; browsers can't report overflow out of the top/left of a frame. If you must overlay, put `'data-fit-bounds': true` on the overlay block and PiDash will make sure it stays inside its parent.
 
 ## Tips
 

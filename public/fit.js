@@ -33,10 +33,21 @@
     return amount <= 8 && amount <= 0.2 * Math.max(n.clientHeight, n.clientWidth);
   };
 
+  // Overlay blocks (marked data-fit-bounds) must lie inside their parent frame. Browsers only report overflow towards
+  // the bottom/right, so text pushed out of the top/left of a frame would otherwise go unnoticed.
+  function outOfBounds(el) {
+    const parent = el.parentElement;
+    if (!parent) return false;
+    const a = el.getBoundingClientRect();
+    const p = parent.getBoundingClientRect();
+    return a.top < p.top - 1 || a.left < p.left - 1 || a.bottom > p.bottom + 1 || a.right > p.right + 1;
+  }
+
   // `ignore` = elements known to clip at every scale (scale-independent quirks); they don't count.
   function firstClipped(body, ignore) {
     if (!(ignore && ignore.has(body)) && clipped(body)) return body;
     for (const n of body.querySelectorAll('*')) if (!(ignore && ignore.has(n)) && clipped(n)) return n;
+    for (const n of body.querySelectorAll('[data-fit-bounds]')) if (!(ignore && ignore.has(n)) && outOfBounds(n)) return n;
     return null;
   }
 
