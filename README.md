@@ -7,6 +7,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Reminders** managed from the admin page
 - **ESPN Fantasy** league standings and matchups (football, baseball, basketball, hockey)
 - **News** from any RSS/Atom feeds
+- **Verse of the Day**: Bible Gateway's daily verse in NIV/ESV/NKJV/NLT and more, a curated daily list in public-domain translations, or your own list of verses
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
 - **Plugin widgets**: drop a folder in and it appears in the admin. See [docs/WRITING_WIDGETS.md](docs/WRITING_WIDGETS.md)
 - **11 themes** (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) with custom accent and background colors, card styles, fonts, text size, and an automatic night theme

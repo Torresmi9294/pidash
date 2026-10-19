@@ -1,0 +1,31 @@
+'use strict';
+// Curated references only (no scripture text is bundled). The text is fetched in a
+// public-domain translation. Verse of the day = this list indexed by day of the year.
+module.exports = [
+  'Genesis 1:1', 'Genesis 28:15', 'Exodus 14:14', 'Numbers 6:24-26', 'Deuteronomy 31:6', 'Joshua 1:9',
+  '1 Chronicles 16:34', '2 Chronicles 7:14',
+  'Psalm 4:8', 'Psalm 16:11', 'Psalm 18:2', 'Psalm 19:14', 'Psalm 23:1-3', 'Psalm 23:4', 'Psalm 27:1', 'Psalm 27:14',
+  'Psalm 28:7', 'Psalm 29:11', 'Psalm 30:5', 'Psalm 31:24', 'Psalm 34:8', 'Psalm 34:18', 'Psalm 37:4', 'Psalm 37:5',
+  'Psalm 46:1', 'Psalm 46:10', 'Psalm 51:10', 'Psalm 55:22', 'Psalm 56:3', 'Psalm 62:1', 'Psalm 73:26', 'Psalm 91:1-2',
+  'Psalm 91:11', 'Psalm 94:19', 'Psalm 100:4-5', 'Psalm 103:2-3', 'Psalm 118:24', 'Psalm 119:105', 'Psalm 121:1-2',
+  'Psalm 121:7-8', 'Psalm 126:3', 'Psalm 138:8', 'Psalm 139:14', 'Psalm 143:8', 'Psalm 145:18', 'Psalm 147:3',
+  'Proverbs 3:5-6', 'Proverbs 4:23', 'Proverbs 11:25', 'Proverbs 15:1', 'Proverbs 16:3', 'Proverbs 16:9', 'Proverbs 17:17',
+  'Proverbs 18:10', 'Proverbs 18:21', 'Proverbs 22:6', 'Proverbs 27:17', 'Ecclesiastes 3:1', 'Ecclesiastes 4:9-10',
+  'Isaiah 26:3', 'Isaiah 40:31', 'Isaiah 41:10', 'Isaiah 41:13', 'Isaiah 43:1-2', 'Isaiah 43:18-19', 'Isaiah 53:5', 'Isaiah 55:8-9',
+  'Jeremiah 17:7-8', 'Jeremiah 29:11', 'Jeremiah 29:13', 'Jeremiah 31:3', 'Jeremiah 33:3', 'Lamentations 3:22-23',
+  'Micah 6:8', 'Nahum 1:7', 'Habakkuk 3:19', 'Zephaniah 3:17',
+  'Matthew 5:14-16', 'Matthew 6:33', 'Matthew 7:7', 'Matthew 11:28-30', 'Matthew 19:26', 'Matthew 22:37-39', 'Matthew 28:19-20',
+  'Mark 10:27', 'Mark 11:24', 'Luke 1:37', 'Luke 6:31',
+  'John 1:1', 'John 3:16', 'John 8:12', 'John 10:10', 'John 13:34', 'John 14:1', 'John 14:6', 'John 14:27', 'John 15:5', 'John 15:13', 'John 16:33',
+  'Acts 1:8', 'Acts 4:12',
+  'Romans 5:8', 'Romans 8:1', 'Romans 8:28', 'Romans 8:31', 'Romans 8:38-39', 'Romans 12:2', 'Romans 12:12', 'Romans 15:13',
+  '1 Corinthians 10:13', '1 Corinthians 13:4-7', '1 Corinthians 15:58', '1 Corinthians 16:13-14',
+  '2 Corinthians 4:16-18', '2 Corinthians 5:7', '2 Corinthians 5:17', '2 Corinthians 12:9',
+  'Galatians 2:20', 'Galatians 5:22-23', 'Galatians 6:9',
+  'Ephesians 2:8-9', 'Ephesians 3:20', 'Ephesians 4:32', 'Ephesians 6:10',
+  'Philippians 1:6', 'Philippians 4:4', 'Philippians 4:6-7', 'Philippians 4:8', 'Philippians 4:13', 'Philippians 4:19',
+  'Colossians 3:12', 'Colossians 3:23', '1 Thessalonians 5:16-18', '2 Timothy 1:7',
+  'Hebrews 4:16', 'Hebrews 11:1', 'Hebrews 12:1-2', 'Hebrews 13:5-6', 'Hebrews 13:8',
+  'James 1:2-3', 'James 1:5', 'James 1:17', 'James 4:7-8',
+  '1 Peter 4:8', '1 Peter 5:7', '1 John 1:9', '1 John 4:18', '1 John 4:19', 'Revelation 21:4',
+];

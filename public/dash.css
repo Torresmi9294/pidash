@@ -42,6 +42,7 @@ body {
 #layout { position: absolute; inset: 0; display: grid; grid-template-columns: 27% 1fr; gap: 1.2rem; padding: 1.4rem; }
 #layout.portrait { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 #sidebar { display: flex; flex-direction: column; gap: 1.2rem; min-height: 0; overflow: hidden; }
+#sidebar > .card { flex-shrink: 0; }
 #layout.portrait #sidebar { flex-direction: row; }
 #layout.portrait #sidebar > .card { flex: 1; }
 #stage { position: relative; min-height: 0; min-width: 0; }
@@ -159,3 +160,16 @@ body {
 .bar-fill { width: 100%; max-width: 3.2rem; background: var(--accent); border-radius: 0.4rem 0.4rem 0.15rem 0.15rem; min-height: 3px; }
 .bar small { color: var(--muted); font-size: 0.8rem; }
 .hnote { font-size: 0.8rem; text-align: right; }
+
+/* ---- verse of the day ---- */
+.verse { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 3rem; }
+.vq { font-family: Georgia, 'Noto Serif', serif; font-size: 7rem; line-height: 0.6; height: 3rem; color: var(--accent); opacity: 0.35; }
+.vt { font-family: Georgia, 'Noto Serif', 'DejaVu Serif', serif; line-height: 1.4; font-style: italic; max-width: 60rem; }
+.v-s .vt { font-size: 3rem; } .v-m .vt { font-size: 2.5rem; } .v-l .vt { font-size: 2rem; } .v-xl .vt { font-size: 1.6rem; }
+.vr { margin-top: 1.4rem; font-size: 1.4rem; font-weight: 600; color: var(--accent); letter-spacing: 0.04em; }
+.vv { color: var(--muted); font-weight: 400; font-size: 1rem; }
+.vc { margin-top: 0.8rem; font-size: 0.7rem; max-width: 40rem; }
+.verse.sidebar { padding: 0 0.5rem; }
+.verse.sidebar .vq { display: none; }
+.verse.sidebar .vt { font-size: 1.05rem !important; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.verse.sidebar .vr { font-size: 1rem; margin-top: 0.5rem; }
