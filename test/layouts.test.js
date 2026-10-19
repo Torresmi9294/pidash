@@ -228,3 +228,20 @@ test('content fit defaults to fill and persists', async () => {
     server.close();
   }
 });
+
+test('fit: a widget-specific readable floor trims items before shrinking text below it', () => {
+  const Fit = loadFit();
+  Fit.setMode('fill');
+  const b = fakeBody({ natural: 0, client: 100, items: 10 }); // all 10 rows would need ~0.25 scale
+  const s = Fit.card(b, { floor: 0.85 });
+  assert.ok(s >= 0.85, `text stays at or above the 0.85 floor (got ${s})`);
+  const shown = b.querySelectorAll('[data-fit-item]').filter((i) => i.style.display !== 'none').length;
+  assert.ok(shown >= 1 && shown <= 3, `more rows hidden than with the default floor (shown ${shown})`);
+  assert.ok(b.scrollHeight <= 100);
+});
+
+test('news slideshow and list widgets declare how they should be fitted', () => {
+  const src = (f) => fs.readFileSync(path.join(__dirname, '..', 'widgets', f, 'client.js'), 'utf8');
+  assert.match(src('rss'), /fit:\s*\(o\)\s*=>\s*o\.layout !== 'slideshow'/);
+  for (const w of ['rss', 'calendar', 'reminders', 'espn-fantasy']) assert.match(src(w), /fitFloor:\s*0\.\d+/, `${w} should set fitFloor`);
+});

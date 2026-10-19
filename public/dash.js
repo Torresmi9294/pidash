@@ -10,6 +10,13 @@
   let display = null;
   let rev = null;
 
+  // Native replaceChildren() writes the text "null" for a null argument and does not accept arrays.
+  // Widgets (including your own) often pass conditional children, so make it forgiving.
+  const nativeReplace = Element.prototype.replaceChildren;
+  Element.prototype.replaceChildren = function replaceChildren(...kids) {
+    return nativeReplace.apply(this, kids.flat(Infinity).filter((k) => k != null && k !== false));
+  };
+
   // Safe DOM builder - never uses innerHTML, so calendar/RSS text can't inject markup.
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
@@ -80,6 +87,8 @@
   }
 
   // ---- content fit (see fit.js) -------------------------------------------------------------
+  // def.fit may be false, or a function of the widget's options (e.g. the news slideshow fills itself).
+  const fitEnabled = (c) => !!c.def && (typeof c.def.fit === 'function' ? c.def.fit(c.w.options || {}) !== false : c.def.fit !== false);
   const inSidebar = (c) => !!c.card.parentElement && c.card.parentElement.id === 'sidebar';
   let fitFrame = 0;
   const fitQueue = new Set();
@@ -87,7 +96,7 @@
   function fitSidebar() {
     const side = document.getElementById('sidebar');
     if (!side || !side.isConnected) return;
-    const cards = allCards.filter((c) => inSidebar(c) && c.def.fit !== false);
+    const cards = allCards.filter((c) => inSidebar(c) && fitEnabled(c));
     const layoutEl = document.getElementById('layout');
     PidashFit.group(cards.map((c) => c.body), side, {
       horizontal: ['top', 'bottom'].includes(layoutEl.dataset.layout),
@@ -98,9 +107,9 @@
 
   function fitNow(c) {
     if (!c.def) return;
-    if (c.def.fit === false) { c.body.style.removeProperty('--u'); return; }
+    if (!fitEnabled(c)) { c.body.style.removeProperty('--u'); return; }
     if (inSidebar(c)) fitSidebar();
-    else PidashFit.card(c.body, { max: c.def.fitMax });
+    else PidashFit.card(c.body, { max: c.def.fitMax, floor: c.def.fitFloor });
   }
 
   function fitSoon(c) {

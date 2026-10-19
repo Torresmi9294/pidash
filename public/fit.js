@@ -85,14 +85,15 @@
   // One widget in its own cell (rotating stage, grid tile, pane).
   function card(body, opts) {
     restore(body);
+    const floor = Math.min(Math.max((opts && opts.floor) || READABLE, MIN), 1);
     if (mode === 'off') { body.style.removeProperty('--u'); delete body.dataset.fit; return 1; }
     if (!body.isConnected || body.clientHeight <= 0 || body.clientWidth <= 0) return null;
     const set = (v) => apply(body, v);
     const bad = () => overflows(body);
-    let r = search(set, bad, ceiling(opts), READABLE);
+    let r = search(set, bad, Math.max(ceiling(opts), floor), floor);
     if (!r.ok) {
       trim(body);                       // drop whole trailing items rather than cutting text mid-line
-      if (bad()) r = search(set, bad, READABLE, MIN);
+      if (bad()) r = search(set, bad, floor, MIN);
     }
     body.dataset.fit = (r.s).toFixed(2);
     return r.s;

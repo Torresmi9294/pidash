@@ -1,5 +1,6 @@
 Dash.register('reminders', {
   title: 'Reminders',
+  fitFloor: 0.8,
   render(el, d, { h, fmt, options }) {
     const hi = options.highlight !== false;
     if (!d.items.length) return el.replaceChildren(h('div', { class: 'msg' }, 'Nothing to do. 🎉'));

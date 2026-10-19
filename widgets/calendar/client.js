@@ -1,6 +1,7 @@
 (() => {
   Dash.register('calendar', {
     title: 'Calendar',
+    fitFloor: 0.8,
     render(el, d, ctx) {
       const paint = () => (d.view === 'month' ? month(el, d, ctx) : agenda(el, d, ctx));
       paint();

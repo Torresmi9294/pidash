@@ -15,6 +15,7 @@
 
   Dash.register('espn-fantasy', {
     title: 'Fantasy',
+    fitFloor: 0.75,
     render(el, d, { h, options }) {
       const hi = options.highlight !== false; // "Highlight what matters"
       const logos = options.showLogos !== false;

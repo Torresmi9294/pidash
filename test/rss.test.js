@@ -110,3 +110,24 @@ test('duplicate headlines (same story twice, or in two feeds) are shown once', a
   const d = await rss.data({ feeds: 'https://a.test/rss' + String.fromCharCode(10) + 'https://b.test/rss', maxItems: 10 });
   assert.deepEqual(d.items.map((i) => i.title), ['Story 1', 'Story 2']);
 });
+
+test('layout option: list, featured, slideshow (unknown values fall back to list)', async () => {
+  feeds({ 'https://feed.test/rss': wrap(item(1, '')) });
+  for (const [given, expected] of [[undefined, 'list'], ['list', 'list'], ['featured', 'featured'], ['slideshow', 'slideshow'], ['carousel', 'list']]) {
+    assert.equal((await rss.data({ feeds: 'https://feed.test/rss', layout: given })).layout, expected, String(given));
+  }
+});
+
+test('big layouts prefer the widest image the feed declares; the list keeps the first (small) one', async () => {
+  const body = '<media:content url="https://img.example.com/small.jpg" medium="image" width="240"/><media:content url="https://img.example.com/large.jpg" medium="image" width="1200"/>';
+  feeds({ 'https://feed.test/rss': wrap(item(1, body)) });
+  assert.equal((await rss.data({ feeds: 'https://feed.test/rss', layout: 'list' })).items[0].image, 'https://img.example.com/small.jpg');
+  assert.equal((await rss.data({ feeds: 'https://feed.test/rss', layout: 'featured' })).items[0].image, 'https://img.example.com/large.jpg');
+  assert.equal((await rss.data({ feeds: 'https://feed.test/rss', layout: 'slideshow' })).items[0].image, 'https://img.example.com/large.jpg');
+});
+
+test('the slideshow is a configurable layout with its own timing field', () => {
+  const f = rss.meta.fields;
+  assert.ok(f.find((x) => x.key === 'layout').options.some((o) => o.value === 'slideshow'));
+  assert.ok(f.find((x) => x.key === 'itemSeconds'));
+});

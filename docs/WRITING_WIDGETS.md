@@ -73,7 +73,8 @@ PiDash scales each widget's contents to its cell so nothing is cut off: down whe
 
 - **Use `calc(N * var(--u))` instead of `rem`** for sizes in CSS (`--u` is 1rem normally; the fitter changes it per widget). A test fails if `dash.css` contains plain `rem`. Percentages, `em`, `px` borders and `vw/vh` are fine.
 - Build lists from repeated items and mark each with `'data-fit-item': true` (and the wrapper of a group of items with `'data-fit-group': true`). If the widget still doesn't fit at a readable size, PiDash hides whole trailing items and shows "+N more" instead of cutting a line in half.
-- Opt out or tune in `Dash.register`: `fit: false` for widgets that fill their cell themselves (photos/video), `fitMax: 2.5` to let a widget grow larger than the default 1.6x.
+- Opt out or tune in `Dash.register`: `fit: false` for widgets that fill their cell themselves (photos/video), or `fit: (options) => ...` to decide per widget instance; `fitMax: 2.5` to let a widget grow larger than the default 1.6x; `fitFloor: 0.8` for list widgets so text stays that large and whole items are hidden instead of shrinking further.
+- `replaceChildren()` is patched to ignore `null`/`false` and to accept arrays, so conditional children are safe.
 - Anything with `overflow: hidden` that clips content counts as "doesn't fit", so avoid hiding overflow on purpose.
 
 ## Tips

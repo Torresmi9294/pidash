@@ -11,7 +11,15 @@ exports.meta = {
     { key: 'feeds', label: 'Feed URLs (one per line)', type: 'textarea', placeholder: 'https://feeds.bbci.co.uk/news/rss.xml' },
     { key: 'maxItems', label: 'Max headlines', type: 'number', placeholder: '8' },
     { key: 'showThumbnails', label: 'Show thumbnails (when the feed has images)', type: 'checkbox', default: true },
-    { key: 'layout', label: 'Layout', type: 'select', options: [{ value: 'list', label: 'List' }, { value: 'featured', label: 'Featured top story + list' }] },
+    {
+      key: 'layout', label: 'Layout', type: 'select',
+      options: [
+        { value: 'list', label: 'List' },
+        { value: 'featured', label: 'Featured top story + list' },
+        { value: 'slideshow', label: 'Featured stories slideshow (one big story at a time, rotating)' },
+      ],
+    },
+    { key: 'itemSeconds', label: 'Seconds per story (slideshow)', type: 'number', placeholder: '12' },
     { key: 'showSummary', label: 'Show a short summary under each headline', type: 'checkbox' },
   ],
 };
@@ -42,16 +50,22 @@ const TRACKER = /pixel|1x1|spacer|beacon|feedburner|doubleclick|analytics|tracki
 // Finds a thumbnail for a feed item. Feeds put images in many places; check the common ones in
 // order of reliability: media:thumbnail, media:content, enclosure, itunes:image, <image>, then the first
 // <img> inside the item's HTML.
-function imageFrom(it, base) {
+function imageFrom(it, base, preferLarge = false) {
   const found = [];
-  const add = (u) => { if (typeof u === 'string' && u.trim()) found.push(u.trim()); };
+  const widths = new Map();
+  const add = (u, w) => {
+    if (typeof u === 'string' && u.trim()) {
+      found.push(u.trim());
+      if (Number(w) > 0) widths.set(u.trim(), Number(w));
+    }
+  };
   const groups = arr(it['media:group']);
   const thumbs = [...arr(it['media:thumbnail']), ...groups.flatMap((g) => arr(g['media:thumbnail']))];
   const contents = [...arr(it['media:content']), ...groups.flatMap((g) => arr(g['media:content']))];
 
-  thumbs.forEach((m) => add(m['@_url']));
+  thumbs.forEach((m) => add(m['@_url'], m['@_width']));
   contents.forEach((m) => {
-    if (isImageType(m['@_type']) || m['@_medium'] === 'image' || (!m['@_type'] && !m['@_medium'] && looksLikeImage(m['@_url'] || ''))) add(m['@_url']);
+    if (isImageType(m['@_type']) || m['@_medium'] === 'image' || (!m['@_type'] && !m['@_medium'] && looksLikeImage(m['@_url'] || ''))) add(m['@_url'], m['@_width']);
   });
   arr(it.enclosure).forEach((e) => { if (isImageType(e['@_type']) || (!e['@_type'] && looksLikeImage(e['@_url'] || ''))) add(e['@_url']); });
   arr(it.link).forEach((l) => { if (l && typeof l === 'object' && l['@_rel'] === 'enclosure' && isImageType(l['@_type'])) add(l['@_href']); });
@@ -64,6 +78,8 @@ function imageFrom(it, base) {
     if (src && !TRACKER.test(tag) && !/\bwidth\s*=\s*["']?1["']?\s/i.test(tag)) { add(src[1]); break; }
   }
 
+  // Big layouts (hero / slideshow) prefer the widest image the feed declares; the list uses the first (small, quick).
+  if (preferLarge && widths.size) found.sort((a, b) => (widths.get(b) || 0) - (widths.get(a) || 0));
   for (const raw of found) {
     try {
       const u = new URL(raw.replace(/&amp;/g, '&'), base);
@@ -83,7 +99,7 @@ const linkOf = (it) => {
   return l || '';
 };
 
-async function readFeed(url, wantImages) {
+async function readFeed(url, wantImages, preferLarge) {
   const res = await fetch(url, { headers: { 'user-agent': 'PiDash/1.0', accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' }, signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   const doc = parser.parse(await res.text());
@@ -98,7 +114,7 @@ async function readFeed(url, wantImages) {
       source,
       date: text(it.pubDate) || text(it['dc:date']) || text(it.updated) || text(it.published) || null,
       summary: summaryOf(it),
-      image: wantImages ? imageFrom(it, link || url) : '',
+      image: wantImages ? imageFrom(it, link || url, preferLarge) : '',
     };
   });
 }
@@ -107,7 +123,8 @@ exports.data = async (options, ctx = {}) => {
   const urls = String(options.feeds || '').split('\n').map((s) => s.trim()).filter(Boolean);
   if (!urls.length) throw new Error('Add at least one feed URL in the widget settings.');
   const wantImages = options.showThumbnails !== false;
-  const results = await Promise.allSettled(urls.map((u) => readFeed(u, wantImages)));
+  const layout = ['featured', 'slideshow'].includes(options.layout) ? options.layout : 'list';
+  const results = await Promise.allSettled(urls.map((u) => readFeed(u, wantImages, layout !== 'list')));
   const ok = results.filter((r) => r.status === 'fulfilled');
   if (!ok.length) throw results[0].reason; // every feed failed; a single bad feed alone does not blank the widget
 
@@ -126,7 +143,7 @@ exports.data = async (options, ctx = {}) => {
     logos.warm(ctx.widgetId, sources.map((s) => logos.normalize(s)).filter(Boolean)).catch(() => {});
   }
   if (!options.showSummary) for (const i of items) delete i.summary;
-  return { items, layout: options.layout === 'featured' ? 'featured' : 'list', warnings: results.filter((r) => r.status === 'rejected').map((r) => r.reason.message) };
+  return { items, layout, warnings: results.filter((r) => r.status === 'rejected').map((r) => r.reason.message) };
 };
 
 exports._internals = { imageFrom, plain };

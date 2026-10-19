@@ -6,7 +6,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Weather** from Open-Meteo (no key) or OpenWeatherMap (your key)
 - **Reminders** managed from the admin page
 - **ESPN Fantasy** league standings and matchups with team logos (football, baseball, basketball, hockey)
-- **News** from any RSS/Atom feeds, with thumbnails when the feed includes images, an optional featured top story, and short summaries
+- **News** from any RSS/Atom feeds, with thumbnails when the feed includes images, a featured top story + list, a rotating one-story-at-a-time slideshow, and short summaries
 - **Sports Highlights**: ESPN headlines and video clips for NFL, NBA, MLB, NHL, college, WNBA, MLS or Premier League, with optional muted clip playback
 - **Verse of the Day**: Bible Gateway's daily verse in NIV/ESV/NKJV/NLT and more, a curated daily list in public-domain translations, or your own list of verses
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
