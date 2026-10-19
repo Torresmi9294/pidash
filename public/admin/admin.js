@@ -53,7 +53,7 @@
     const set = (v) => { obj[key] = v; touch(); };
     const wrap = (input, extra) => h('label', { class: 'f' }, h('span', {}, f.label), input, f.help ? h('small', {}, f.help) : null, extra);
     if (f.type === 'checkbox') {
-      return h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: val, onchange: (e) => set(e.target.checked) }), f.label);
+      return h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: val === undefined ? !!f.default : val, onchange: (e) => set(e.target.checked) }), f.label);
     }
     if (f.type === 'select') {
       return wrap(h('select', { onchange: (e) => set(e.target.value) }, f.options.map((o) => h('option', { value: o.value, selected: (val || f.options[0].value) === o.value }, o.label))));
@@ -267,19 +267,21 @@
     const list = h('div');
     const text = h('input', { type: 'text', class: 'grow', placeholder: 'e.g. Take out the trash' });
     const due = h('input', { type: 'date' });
+    const star = h('label', { class: 'chk', style: 'margin:0' }, h('input', { type: 'checkbox' }), '\u2605 Pin');
     const load = guard(async () => {
       const items = await api('GET', '/reminders');
       list.replaceChildren(items.length ? items.map((r) => h('div', { class: `rem ${r.done ? 'done' : ''}` },
         h('input', { type: 'checkbox', checked: r.done, onchange: guard(async (e) => { await api('PATCH', `/reminders/${r.id}`, { done: e.target.checked }); load(); }) }),
+        h('button', { class: 'btn sm ghost', title: r.starred ? 'Unpin from the top' : 'Pin to the top and highlight', onclick: guard(async () => { await api('PATCH', `/reminders/${r.id}`, { starred: !r.starred }); load(); }) }, r.starred ? '\u2605' : '\u2606'),
         h('span', { class: 't' }, r.text), r.due ? h('span', { class: 'pill' }, r.due) : null,
         h('button', { class: 'btn sm danger', onclick: guard(async () => { await api('DELETE', `/reminders/${r.id}`); load(); }) }, 'Delete'))) : h('p', { class: 'muted' }, 'No reminders.'));
     });
     load();
-    const add = guard(async () => { await api('POST', '/reminders', { text: text.value, due: due.value || null }); text.value = ''; due.value = ''; load(); });
+    const add = guard(async () => { await api('POST', '/reminders', { text: text.value, due: due.value || null, starred: star.querySelector('input').checked }); text.value = ''; due.value = ''; star.querySelector('input').checked = false; load(); });
     text.addEventListener('keydown', (e) => e.key === 'Enter' && add());
     return [h('div', { class: 'panel' }, h('h2', {}, 'Reminders'),
       h('p', { class: 'muted small' }, 'Changes here apply instantly. Show them by adding the Reminders widget.'),
-      h('div', { class: 'row' }, text, due, h('button', { class: 'btn primary', onclick: add }, 'Add')), list)];
+      h('div', { class: 'row' }, text, due, star, h('button', { class: 'btn primary', onclick: add }, 'Add')), list)];
   }
 
   // ---- security ----------------------------------------------------------

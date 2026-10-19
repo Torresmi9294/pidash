@@ -14,6 +14,7 @@ exports.meta = {
     { key: 'calorieGoal', label: 'Active calorie goal', type: 'number', placeholder: '500' },
     { key: 'exerciseGoal', label: 'Exercise minutes goal', type: 'number', placeholder: '30' },
     { key: 'sleepGoal', label: 'Sleep goal (hours)', type: 'number', placeholder: '8' },
+    { key: 'highlight', label: 'Highlight what matters (goal-reached glow, step streaks, best day)', type: 'checkbox', default: true },
   ],
 };
 

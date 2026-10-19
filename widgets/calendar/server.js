@@ -14,6 +14,8 @@ exports.meta = {
     { key: 'useGoogle', label: 'Use Google Calendar (connect it on the Google tab)', type: 'checkbox' },
     { key: 'calendarIds', label: 'Google calendar IDs (one per line)', type: 'textarea', placeholder: 'primary', help: 'Blank = your primary calendar. Find IDs on the Google tab.' },
     { key: 'icsUrls', label: 'ICS feed URLs (one per line)', type: 'textarea', secret: true, placeholder: 'https://calendar.google.com/calendar/ical/.../basic.ics', help: 'The easiest option - no API setup. These URLs are private, so they are hidden once saved.' },
+    { key: 'highlight', label: 'Highlight what matters (NOW / NEXT markers, dim past events, busy days)', type: 'checkbox', default: true },
+    { key: 'highlightWords', label: 'Always highlight events containing (comma-separated)', type: 'text', placeholder: 'birthday, anniversary, flight', help: 'Matching events get a star and stand out in both views.' },
     { key: 'daysAhead', label: 'Days ahead (agenda)', type: 'number', placeholder: '7' },
     { key: 'maxEvents', label: 'Max events (agenda)', type: 'number', placeholder: '12' },
   ],

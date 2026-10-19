@@ -5,8 +5,9 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Google Calendar** via OAuth, or any **ICS/iCal feed** URL (no API setup)
 - **Weather** from Open-Meteo (no key) or OpenWeatherMap (your key)
 - **Reminders** managed from the admin page
-- **ESPN Fantasy** league standings and matchups (football, baseball, basketball, hockey)
+- **ESPN Fantasy** league standings and matchups with team logos (football, baseball, basketball, hockey)
 - **News** from any RSS/Atom feeds
+- **Sports Highlights**: ESPN headlines and video clips for NFL, NBA, MLB, NHL, college, WNBA, MLS or Premier League, with optional muted clip playback
 - **Verse of the Day**: Bible Gateway's daily verse in NIV/ESV/NKJV/NLT and more, a curated daily list in public-domain translations, or your own list of verses
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
 - **Plugin widgets**: drop a folder in and it appears in the admin. See [docs/WRITING_WIDGETS.md](docs/WRITING_WIDGETS.md)
@@ -105,6 +106,15 @@ Reminders are added on the admin Reminders tab (instant). The News widget takes 
 ### Health
 
 Apple Health and Android Health Connect keep data on the phone and offer no cloud API, so your phone **pushes** a daily summary to PiDash. Open **Admin → Health** for your endpoint, a private token, ready-to-copy `curl` example, and iPhone Shortcut / Health Auto Export / Android instructions, then add the **Health** widget. Use the *Send sample data* button to preview the widget before your phone is connected. The supported fields are `steps, activeCalories, exerciseMinutes, standHours, heartRate, restingHeartRate, sleepHours, bloodOxygen, distanceKm/Mi, weightKg/Lb`. Send a `person` name to track several people (one widget each).
+
+### Highlights
+
+Every highlight is an option in the admin, so you decide what stands out:
+
+- **Highlight what matters** (on by default, per widget). ESPN: leader in green, trailing team dimmed, close games flagged, medals and win/loss streaks in the standings. Calendar: live **NOW** / **NEXT** markers and dimmed past events. Reminders: overdue in red, due-today in amber. Weather: rain, storm, freezing, heat and wind alert chips. Health: goal-reached glow, step streaks and best day.
+- **Matchup callouts** (ESPN): top score, biggest blowout, closest game and your team's rank/streak.
+- **Pinned items**: star reminders (Admin → Reminders), list keywords to highlight in the Calendar (e.g. `birthday, flight`), and pin extra ESPN team IDs such as a rival.
+- **Sports video highlights**: add the *Sports Highlights* widget. Tick *Play the video clips* to play them muted on the display (best on a Pi 4/5 or PC; otherwise it shows thumbnails and headlines). It uses ESPN's public, unofficial feeds for personal use.
 
 ### Photo background
 

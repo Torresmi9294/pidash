@@ -7,11 +7,12 @@
 
   Dash.register('weather', {
     title: 'Weather',
-    render(el, d, { h, fmt, slot }) {
+    render(el, d, { h, fmt, slot, options }) {
+      const hi = options.highlight !== false;
       const u = d.units;
       const cur = d.current;
       const days = (slot === 'sidebar' ? d.daily.slice(0, 3) : d.daily).map((x) =>
-        h('div', { class: 'wx-day' },
+        h('div', { class: `wx-day ${hi && x.rain >= 60 ? 'wet' : ''} ${hi && x.condition === 'thunder' ? 'storm' : ''}` },
           h('div', { class: 'd' }, fmt.weekday(x.date, 'short')),
           h('div', { class: 'i' }, icon(x.condition)),
           h('div', { class: 't' }, `${x.high}°`, ' ', h('span', {}, `${x.low}°`)),
@@ -28,6 +29,9 @@
               h('br'),
               `Feels ${cur.feelsLike}° · ${cur.humidity}% · ${cur.wind} ${u.wind}`),
           )),
+        hi && d.alerts && d.alerts.length
+          ? h('div', { class: 'wx-alerts' }, d.alerts.slice(0, slot === 'sidebar' ? 2 : 3).map((a) => h('span', { class: `wx-alert ${a.level}` }, `${a.icon} ${a.text}`)))
+          : null,
         h('div', { class: 'wx-days' }, days),
       );
     },

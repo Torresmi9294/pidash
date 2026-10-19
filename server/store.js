@@ -10,11 +10,11 @@ function listReminders() {
   return config.readJson(REMINDERS_FILE, []);
 }
 
-function addReminder({ text, due }) {
+function addReminder({ text, due, starred }) {
   const t = String(text || '').trim().slice(0, 200);
   if (!t) throw new Error('Reminder text is required.');
   const list = listReminders();
-  const item = { id: crypto.randomBytes(4).toString('hex'), text: t, due: due || null, done: false, created: Date.now() };
+  const item = { id: crypto.randomBytes(4).toString('hex'), text: t, due: due || null, done: false, starred: !!starred, created: Date.now() };
   list.push(item);
   config.writeJson(REMINDERS_FILE, list);
   return item;
@@ -27,6 +27,7 @@ function updateReminder(id, patch) {
   if ('done' in patch) item.done = !!patch.done;
   if ('text' in patch) item.text = String(patch.text).slice(0, 200);
   if ('due' in patch) item.due = patch.due || null;
+  if ('starred' in patch) item.starred = !!patch.starred;
   config.writeJson(REMINDERS_FILE, list);
   return item;
 }

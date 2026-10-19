@@ -17,6 +17,7 @@ exports.meta = {
     { key: 'longitude', label: 'Longitude (optional)', type: 'text' },
     { key: 'apiKey', label: 'OpenWeatherMap API key', type: 'text', secret: true, help: 'Only used when the provider is OpenWeatherMap.' },
     { key: 'days', label: 'Forecast days', type: 'number', placeholder: '5' },
+    { key: 'highlight', label: 'Highlight what matters (rain, storms, freezing, heat and wind alerts)', type: 'checkbox', default: true },
   ],
 };
 
@@ -144,11 +145,39 @@ async function openWeatherMap(o, units, loc) {
   };
 }
 
+// Notable conditions worth a callout, in the display's units.
+function buildAlerts(w, units, weekday) {
+  const imperial = units === 'imperial';
+  const hot = imperial ? 90 : 32;
+  const freeze = imperial ? 32 : 0;
+  const windy = imperial ? 25 : 40;
+  const out = [];
+  const c = w.current;
+  const t = w.today;
+  const named = (d) => (d.date === w.daily[0].date ? 'tomorrow' : weekday(d.date));
+  const stormDay = w.daily.slice(0, 3).find((d) => d.condition === 'thunder');
+  if (c.condition === 'thunder') out.push({ icon: '\u26C8\uFE0F', text: 'Thunderstorms now', level: 'bad' });
+  else if (stormDay) out.push({ icon: '\u26C8\uFE0F', text: `Thunderstorms ${named(stormDay)}`, level: 'bad' });
+  const rainDay = w.daily.slice(0, 3).find((d) => d.rain >= 60 && d.condition !== 'thunder');
+  if (c.condition === 'rain' || c.condition === 'drizzle') out.push({ icon: '\u2614', text: 'Raining now', level: 'warn' });
+  else if (rainDay) out.push({ icon: '\u2614', text: `Rain likely ${named(rainDay)} (${rainDay.rain}%)`, level: 'warn' });
+  if (c.condition === 'snow' || w.daily.slice(0, 2).some((d) => d.condition === 'snow')) out.push({ icon: '\u2744\uFE0F', text: 'Snow in the forecast', level: 'warn' });
+  const low = t ? t.low : c.temp;
+  if (low <= freeze) out.push({ icon: '\u{1F976}', text: `Freezing tonight (${low}\u00B0)`, level: 'bad' });
+  const high = t ? t.high : c.temp;
+  if (high >= hot) out.push({ icon: '\u{1F525}', text: `Hot today (${high}\u00B0)`, level: 'bad' });
+  if (c.wind >= windy) out.push({ icon: '\u{1F4A8}', text: `Windy (${c.wind} ${w.units.wind})`, level: 'warn' });
+  return out.slice(0, 3);
+}
+
 exports.data = async (options, ctx) => {
   const loc = await locate(options);
-  return options.provider === 'openweathermap'
-    ? openWeatherMap(options, ctx.display.units, loc)
-    : openMeteo(options, ctx.display.units, loc);
+  const w = options.provider === 'openweathermap'
+    ? await openWeatherMap(options, ctx.display.units, loc)
+    : await openMeteo(options, ctx.display.units, loc);
+  const weekday = (date) => new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
+  w.alerts = buildAlerts(w, ctx.display.units, weekday);
+  return w;
 };
 
-exports._internals = { wmo, owm };
+exports._internals = { wmo, owm, buildAlerts };
