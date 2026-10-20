@@ -120,3 +120,11 @@ test('regenerating the token invalidates the old one', async () => {
   assert.equal((await post({ steps: 1 }, { authorization: `Bearer ${old}` })).status, 401);
   assert.equal((await post({ steps: 1234 }, bearer())).status, 200);
 });
+
+test('the admin Health tab carries the step-by-step iPhone Shortcuts walkthrough and the certificate help', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'admin', 'admin.js'), 'utf8');
+  for (const needle of ['Step 1 - check your iPhone can reach PiDash', 'Step 2 - Apple Health with Shortcuts', 'Find Health Samples', 'Calculate Statistics', 'Get Contents of URL', 'Ask Before Running', 'If steps is greater than 0', 'Certificate Trust Settings', 'fullchain.pem']) {
+    assert.ok(src.includes(needle), `missing: ${needle}`);
+  }
+  assert.ok(!src.includes('Option A - Shortcuts'), 'old one-paragraph instructions should be gone');
+});

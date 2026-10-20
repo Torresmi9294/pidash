@@ -300,6 +300,9 @@
     const url = `${location.origin}/api/health/ingest`;
     const tokenBox = h('input', { type: 'text', readonly: true, class: 'grow', value: '...', onclick: (e) => e.target.select() });
     const people = h('span', { class: 'muted small' }, '');
+    const urlCode = h('code', {}, url);
+    const tokenCode = h('code', {}, '(loading...)');
+    const safariCode = h('code', {}, `${location.origin}/api/health`);
     let token = '';
     const curlText = () => `curl -X POST "${url}" \\\n  -H "Authorization: Bearer ${token || '<token>'}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"steps": 8421, "activeCalories": 420, "exerciseMinutes": 32, "restingHeartRate": 58, "sleepHours": 7.2}'`;
     const curl = h('pre', { style: 'overflow:auto;background:var(--bg);padding:10px;border-radius:8px;font-size:12px' }, curlText());
@@ -307,6 +310,7 @@
       const i = await api('GET', '/health/info');
       token = i.token;
       tokenBox.value = token;
+      tokenCode.textContent = token;
       people.textContent = i.people.length ? `Data received for: ${i.people.join(', ')}` : 'No data received yet.';
       curl.textContent = curlText();
     });
@@ -322,13 +326,51 @@
         h('div', { class: 'row', style: 'margin-top:10px' },
           h('button', { class: 'btn', onclick: guard(async () => { await api('POST', '/health/sample', { person: 'me' }); await refresh(); toast('Sample data added - add a Health widget to see it'); }) }, 'Send sample data'),
           h('button', { class: 'btn danger', onclick: guard(async () => { if (confirm('Delete all stored health data?')) { await api('DELETE', '/health/data'); await refresh(); } }) }, 'Clear stored data'))),
+      h('div', { class: 'panel' }, h('h2', {}, 'Step 1 - check your iPhone can reach PiDash'),
+        h('p', { class: 'small' }, 'On the iPhone, open this address in Safari: ', safariCode),
+        h('p', { class: 'small' }, 'You should see ', h('code', {}, '{"ok":true}'), ' and no warning. Use exactly this address (same host name, same http/https) for the endpoint in the shortcut. If Safari shows a certificate warning, Shortcuts will refuse the connection too ("the certificate for this server is invalid"):'),
+        h('ul', { class: 'small' },
+          h('li', {}, h('b', {}, 'Wrong name: '), 'the certificate only covers a host name such as ', h('code', {}, 'dash.example.com'), ', not an IP address or a different name. Open PiDash by the name on the certificate (point that name at the server in your router/DNS).'),
+          h('li', {}, h('b', {}, 'Self-signed or private certificate: '), 'get a real one (Let\'s Encrypt works for a home domain, including with the DNS challenge for names that are not public), or install your certificate authority on the iPhone: open the .crt file, Settings > Profile Downloaded > Install, then Settings > General > About > Certificate Trust Settings and switch it on.'),
+          h('li', {}, h('b', {}, 'Expired or incomplete chain: '), 'renew it and have the proxy serve the full chain (fullchain.pem), not just the leaf certificate.'),
+          h('li', {}, h('b', {}, 'Simplest on your home network: '), 'skip the proxy and use the direct address ', h('code', {}, 'http://<server-ip>:8080/api/health/ingest'), '. It is unencrypted, but only on your own Wi-Fi, and the token still protects it.'))),
+      h('div', { class: 'panel' }, h('h2', {}, 'Step 2 - Apple Health with Shortcuts (iPhone / Apple Watch)'),
+        h('p', { class: 'muted small' }, 'Free, built in, about 10 minutes. Keep these handy to paste into the shortcut:'),
+        h('p', { class: 'small' }, 'Endpoint: ', urlCode, h('br'), 'Token: ', tokenCode),
+        h('h3', { style: 'font-size:14px;margin:14px 0 4px' }, 'A. Build the shortcut'),
+        h('p', { class: 'small' }, 'Open the ', h('b', {}, 'Shortcuts'), ' app, tap ', h('b', {}, '+'), ' (top right) and name it ', h('b', {}, 'PiDash Health'), '.'),
+        h('ol', { class: 'steps small' },
+          h('li', {}, h('b', {}, 'Get today\'s steps. '), 'Add Action > ', h('i', {}, 'Find Health Samples'), '. Add Filter: ', h('b', {}, 'Type'), ' is ', h('b', {}, 'Steps'), '; add another filter: ', h('b', {}, 'Start Date'), ' is ', h('b', {}, 'Today'), '. Then add ', h('i', {}, 'Calculate Statistics'), ' and set it to ', h('b', {}, 'Sum'), '. Then add ', h('i', {}, 'Set Variable'), ': name it ', h('code', {}, 'steps'), ', value = the Calculation Result.'),
+          h('li', {}, h('b', {}, 'Repeat for the other numbers '), '(copy those four actions and change the type). Start with just steps and active calories to see it work, then add more:'),
+          h('table', { class: 'small', style: 'border-collapse:collapse;margin:6px 0 6px 18px' },
+            h('tr', {}, ['Metric', 'Type to pick', 'Statistic', 'Variable name'].map((t) => h('th', { style: 'text-align:left;padding:2px 14px 2px 0' }, t))),
+            ...[['Active calories', 'Active Energy', 'Sum', 'activeCalories'], ['Exercise minutes', 'Exercise Minutes', 'Sum', 'exerciseMinutes'], ['Resting heart rate', 'Resting Heart Rate', 'Latest', 'restingHeartRate'], ['Weight (lb)', 'Body Mass', 'Latest', 'weightLb']]
+              .map((r) => h('tr', {}, r.map((t, k) => h('td', { style: 'padding:2px 14px 2px 0' }, k === 3 ? h('code', {}, t) : t))))),
+          h('li', {}, h('b', {}, 'Send it. '), 'Add ', h('i', {}, 'Get Contents of URL'), '. ', h('b', {}, 'URL'), ': paste the endpoint above. Tap ', h('b', {}, 'Show More'), ' and set ', h('b', {}, 'Method'), ' to ', h('b', {}, 'POST'), '.'),
+          h('li', {}, h('b', {}, 'Headers > Add new header: '), 'Key ', h('code', {}, 'Authorization'), ', Text ', h('code', {}, 'Bearer '), ' followed by the token above (one space after "Bearer").'),
+          h('li', {}, h('b', {}, 'Request Body > JSON > Add new field '), 'for each number: choose type ', h('b', {}, 'Number'), ', Key ', h('code', {}, 'steps'), ', and for the Value tap the box and pick the variable ', h('code', {}, 'steps'), '. Do the same for ', h('code', {}, 'activeCalories'), ' and any others. The keys must be spelled exactly like the variable names in the table.'),
+          h('li', {}, 'Optional but recommended: wrap the ', h('i', {}, 'Get Contents of URL'), ' action in an ', h('i', {}, 'If'), ' action: ', h('b', {}, 'If steps is greater than 0'), '. iOS locks Health data while the phone is locked, so a run at that moment can read zero and would otherwise overwrite today\'s steps.'),
+          h('li', {}, 'Add ', h('i', {}, 'Show Result'), ' at the very end while testing (delete it later).')),
+        h('h3', { style: 'font-size:14px;margin:14px 0 4px' }, 'B. Test it'),
+        h('p', { class: 'small' }, 'Tap the ', h('b', {}, '\u25B6'), ' play button. The first time, iOS asks for access to your Health data: tap Allow for each type. You should see ', h('code', {}, '{"ok":true,...}'), ', and this page (refresh it) should say "Data received for: me". Then add the Health widget and press Save & apply.'),
+        h('h3', { style: 'font-size:14px;margin:14px 0 4px' }, 'C. Run it automatically'),
+        h('ol', { class: 'steps small' },
+          h('li', {}, 'Shortcuts > ', h('b', {}, 'Automation'), ' tab > ', h('b', {}, '+'), ' > Create Personal Automation > ', h('b', {}, 'Time of Day'), '.'),
+          h('li', {}, 'Pick a time (for example 8:00 AM) and ', h('b', {}, 'Daily'), ' > Next.'),
+          h('li', {}, 'Add Action > ', h('i', {}, 'Run Shortcut'), ' > choose ', h('b', {}, 'PiDash Health'), ' > Next.'),
+          h('li', {}, 'Turn ', h('b', {}, 'Ask Before Running'), ' off and confirm > Done.'),
+          h('li', {}, 'Repeat for more times, such as noon, 6 PM and 10 PM.')),
+        h('h3', { style: 'font-size:14px;margin:14px 0 4px' }, 'If something goes wrong'),
+        h('ul', { class: 'small' },
+          h('li', {}, h('code', {}, 'Invalid token'), ': the header must be exactly ', h('code', {}, 'Authorization'), ' with ', h('code', {}, 'Bearer <token>'), '.'),
+          h('li', {}, h('code', {}, 'No recognized health metrics'), ': the numbers came through empty, or a key is misspelled.'),
+          h('li', {}, 'Certificate error or "cannot connect": see Step 1 above.'))),
+      h('div', { class: 'panel' }, h('h2', {}, 'Alternative: Health Auto Export (app)'),
+        h('p', { class: 'small' }, 'If you would rather not build a shortcut, the Health Auto Export app can push to PiDash on a schedule. Create a REST API automation with the endpoint above, header ', h('code', {}, 'Authorization: Bearer <token>'), ', format JSON, and "Summarize data" on with aggregation by day. PiDash understands its steps, active energy, exercise, stand, heart rate, resting HR, sleep, weight, distance and blood oxygen metrics. The same certificate rule applies.')),
       h('div', { class: 'panel' }, h('h2', {}, 'Data format'),
         h('p', { class: 'muted small' }, 'Send any subset of these as JSON. Each send replaces that day\'s value for the metric. Add "date" (YYYY-MM-DD) to backfill, "person" for multiple people, or "days": [ ... ] for several days at once.'),
         h('p', { class: 'small' }, h('code', {}, 'steps, activeCalories, exerciseMinutes, standHours, heartRate, restingHeartRate, sleepHours (or sleepMinutes), bloodOxygen, distanceKm / distanceMi, weightKg / weightLb')),
         curl),
-      h('div', { class: 'panel' }, h('h2', {}, 'Apple Health (iPhone / Apple Watch)'),
-        h('p', { class: 'small' }, h('b', {}, 'Option A - Shortcuts (free). '), 'In the Shortcuts app create a shortcut: for each metric use ', h('i', {}, 'Find Health Samples'), ' (Start Date = today, e.g. Steps) then ', h('i', {}, 'Calculate Statistics > Sum'), ' (use Latest/Average for heart rate and weight). Finish with ', h('i', {}, 'Get Contents of URL'), ': URL = the endpoint above, Method = POST, Headers: ', h('code', {}, 'Authorization: Bearer <token>'), ', Request Body = JSON with fields like ', h('code', {}, 'steps'), ' and ', h('code', {}, 'activeCalories'), ' set to the numbers. Then Automation > Time of Day (e.g. 8am, noon, 6pm, 10pm) > Run Shortcut, with "Run Immediately".'),
-        h('p', { class: 'small' }, h('b', {}, 'Option B - Health Auto Export (app). '), 'Create a REST API automation with the URL above, header ', h('code', {}, 'Authorization: Bearer <token>'), ', format JSON, and "Summarize data" on with aggregation by day. PiDash understands its steps, active energy, exercise, stand, heart rate, resting HR, sleep, weight, distance and blood oxygen metrics.')),
       h('div', { class: 'panel' }, h('h2', {}, 'Google / Android'),
         h('p', { class: 'small' }, 'Health Connect also has no cloud API, so use any Android automation app that can read Health Connect and send an HTTP POST (same JSON and header as above). Google Fit\'s cloud API is being wound down, so PiDash does not use it. If you wear a Fitbit, tell me - a direct Fitbit pull is possible as a separate integration.')),
     ];
