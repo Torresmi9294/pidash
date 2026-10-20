@@ -10,6 +10,7 @@ const store = require('./store');
 const health = require('./health');
 const logos = require('./logos');
 const updater = require('./updater');
+const Schedule = require('../public/schedule');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const BG_DIR = path.join(config.DATA_DIR, 'backgrounds');
@@ -67,6 +68,7 @@ function sanitizeDisplay(d) {
   d.photoFit = oneOf(d.photoFit, ['cover', 'contain'], 'cover');
   d.photoFade = num(d.photoFade, 0, 10, 2);
   d.photoSeconds = num(d.photoSeconds, 5, 3600, 60);
+  d.schedule = Schedule.sanitize(d.schedule);
   return d;
 }
 
@@ -165,6 +167,14 @@ function createApp() {
   app.get('/api/health', (req, res) => res.json({ ok: true }));
 
   // ---- display API (read-only, no secrets) -------------------------------
+  // Should the display be asleep right now? Polled by the Pi's kiosk script, which switches the monitor itself off.
+  app.get('/api/sleep', (req, res) => {
+    const s = Schedule.sanitize(config.get().display.schedule);
+    const st = Schedule.status(s, new Date());
+    res.set('Cache-Control', 'no-store');
+    res.json({ asleep: st.asleep, monitorOff: s.monitorOff, next: st.next });
+  });
+
   app.get('/api/display', (req, res) => {
     const cfg = config.get();
     res.set('Cache-Control', 'no-store');

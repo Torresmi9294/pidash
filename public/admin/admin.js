@@ -96,13 +96,13 @@
   }
 
   // ---- tabs --------------------------------------------------------------
-  const TABS = { widgets: 'Widgets', display: 'Display', themes: 'Themes', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security', updates: 'Updates' };
+  const TABS = { widgets: 'Widgets', display: 'Display', themes: 'Themes', schedule: 'Schedule', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security', updates: 'Updates' };
 
   function render() {
     $('#tabs').replaceChildren(...Object.entries(TABS).map(([k, label]) =>
       h('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; render(); } }, label, k === 'updates' && upd && upd.state === 'update-available' ? h('span', { class: 'badge-dot', title: 'Update available' }, ' ●') : null)));
     const view = $('#view');
-    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, themes: viewThemes, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity, updates: viewUpdates })[tab]());
+    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, themes: viewThemes, schedule: viewSchedule, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity, updates: viewUpdates })[tab]());
   }
 
   // ---- widgets -----------------------------------------------------------
@@ -599,6 +599,72 @@
       h('p', { class: 'muted small' }, `Currently: ${cfg.admin.hasPassword ? 'password protected' : 'NOT protected - anyone on your network can open this page'}. The display itself is always viewable without a password. The browser will ask for a password (any username).`),
       h('label', { class: 'f' }, h('span', {}, 'New password (blank + Save = remove password)'),
         h('input', { type: 'password', autocomplete: 'new-password', oninput: (e) => { cfg.admin.newPassword = e.target.value; touch(); } })))];
+  }
+
+  // ---- schedule: put the display to sleep and wake it ---------------------------------------------
+  function viewSchedule() {
+    const S = window.PidashSchedule;
+    const d = cfg.display;
+    const sch = d.schedule = { enabled: false, rules: [{ ...S.DEFAULT_RULE }], mode: 'off', touchWake: true, touchMinutes: 10, monitorOff: false, override: null, ...(d.schedule || {}) };
+    const st = S.status(sch, new Date());
+    const when = (ms) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const ORDER = [1, 2, 3, 4, 5, 6, 0];
+    const NAMES = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' };
+    const apply = guard(async (override) => { sch.override = override; touch(); await save(true); toast('Applied'); });
+
+    let status;
+    if (st.source === 'override') {
+      status = `${st.asleep ? 'Asleep' : 'Kept awake'} manually${st.next ? ` until ${when(st.next)}` : ' until you cancel'}.`;
+    } else if (st.source === 'off') {
+      status = sch.enabled ? 'No schedule has days and times set, so the display stays on.' : 'The schedule is off, so the display stays on.';
+    } else {
+      status = st.asleep ? `Asleep now. It wakes up ${st.next ? when(st.next) : ''}.` : `Awake. It goes to sleep ${st.next ? when(st.next) : ''}.`;
+    }
+
+    const ruleCard = (r, i) => {
+      const toggleDay = (day) => { r.days = r.days.includes(day) ? r.days.filter((x) => x !== day) : [...r.days, day].sort(); touch(); render(); };
+      const preset = (label, days) => h('button', { class: 'btn sm', type: 'button', onclick: () => { r.days = days.slice(); touch(); render(); } }, label);
+      const overnight = r.sleep && r.wake && r.sleep !== r.wake && r.wake < r.sleep;
+      return h('div', { class: 'wcard' },
+        h('div', { class: 'body', style: 'display:block' },
+          h('div', { class: 'row', style: 'margin-bottom:8px' },
+            h('b', {}, `Schedule ${i + 1}`),
+            h('span', { class: 'grow' }),
+            preset('Every day', [0, 1, 2, 3, 4, 5, 6]), preset('Weekdays', [1, 2, 3, 4, 5]), preset('Weekends', [0, 6]),
+            h('button', { class: 'btn sm danger', type: 'button', onclick: () => { sch.rules.splice(i, 1); touch(); render(); } }, 'Remove')),
+          h('div', { class: 'daybtns' }, ORDER.map((day) => h('button', { type: 'button', class: `btn sm ${r.days.includes(day) ? 'primary' : ''}`, onclick: () => toggleDay(day) }, NAMES[day]))),
+          h('div', { class: 'row', style: 'margin-top:10px' },
+            h('label', { class: 'f', style: 'margin:0' }, h('span', {}, 'Go to sleep at'), h('input', { type: 'time', value: r.sleep, oninput: (e) => { r.sleep = e.target.value; touch(); } })),
+            h('label', { class: 'f', style: 'margin:0' }, h('span', {}, 'Wake up at'), h('input', { type: 'time', value: r.wake, oninput: (e) => { r.wake = e.target.value; touch(); } }))),
+          h('p', { class: 'muted small', style: 'margin:8px 0 0' },
+            !r.days.length ? 'Pick at least one day.' : r.sleep === r.wake ? 'Sleep and wake are the same time, so this schedule does nothing.' : overnight ? 'Sleeps in the evening and wakes the next morning. The days are the evenings it starts.' : 'Sleeps and wakes on the same day.')));
+    };
+
+    return [
+      h('div', { class: 'panel' }, h('h2', {}, 'Sleep schedule'),
+        h('p', { class: 'muted small' }, 'Put the display to sleep at night (or any time you are not looking at it) and wake it in the morning. Times use the display\'s own clock.'),
+        h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: sch.enabled, onchange: (e) => { sch.enabled = e.target.checked; touch(); render(); } }), 'Use a sleep schedule'),
+        h('p', { class: `upd-msg ${st.asleep ? 'new' : 'ok'}`, style: 'margin-top:10px' }, status),
+        sch.override ? h('div', { class: 'row', style: 'margin-top:8px' }, h('button', { class: 'btn sm', type: 'button', onclick: () => apply(null) }, 'Cancel the manual setting')) : null,
+        sch.rules.map(ruleCard),
+        h('div', { class: 'row', style: 'margin-top:8px' },
+          sch.rules.length < 8 ? h('button', { class: 'btn', type: 'button', onclick: () => { sch.rules.push({ ...S.DEFAULT_RULE }); touch(); render(); } }, 'Add another schedule') : null),
+        h('p', { class: 'muted small' }, 'Use more than one schedule for different times on weekdays and weekends. Changes apply when you press Save & apply.')),
+      h('div', { class: 'panel' }, h('h2', {}, 'While asleep'),
+        h('label', { class: 'f' }, h('span', {}, 'What the screen shows'),
+          h('select', { onchange: (e) => { sch.mode = e.target.value; touch(); } }, [['off', 'Black screen'], ['dim', 'The dashboard, very dim'], ['clock', 'A dim clock on black']].map(([v, label]) => h('option', { value: v, selected: sch.mode === v }, label)))),
+        h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: sch.touchWake, onchange: (e) => { sch.touchWake = e.target.checked; touch(); render(); } }), 'Touch the screen (or press a key) to wake it for a while'),
+        sch.touchWake ? h('label', { class: 'f' }, h('span', {}, 'Stay awake for (minutes)'), h('input', { type: 'number', min: 1, max: 240, value: sch.touchMinutes, style: 'width:120px', oninput: (e) => { sch.touchMinutes = Number(e.target.value) || 10; touch(); } })) : null,
+        h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: sch.monitorOff, onchange: (e) => { sch.monitorOff = e.target.checked; touch(); } }), 'Also switch the monitor itself off (Raspberry Pi kiosk)'),
+        h('p', { class: 'muted small' }, 'Without this the screen goes black but the monitor stays powered. With it, the Pi\'s kiosk turns the monitor off while asleep and back on at wake-up, using wlr-randr (Wayland), xset (X11) or vcgencmd. It needs the kiosk set up by this version of the installer (run the update, then re-run the installer once); the display itself is always blacked out either way.')),
+      h('div', { class: 'panel' }, h('h2', {}, 'Right now'),
+        h('p', { class: 'muted small' }, 'Override the schedule for a while. The schedule takes over again afterwards. These apply immediately.'),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn', type: 'button', onclick: () => apply({ mode: 'sleep', until: S.sleepNowUntil(sch, new Date()) }) }, 'Sleep now'),
+          h('button', { class: 'btn', type: 'button', onclick: () => apply({ mode: 'awake', until: Date.now() + 3600e3 }) }, 'Stay awake for 1 hour'),
+          h('button', { class: 'btn', type: 'button', onclick: () => apply({ mode: 'awake', until: Date.now() + 4 * 3600e3 }) }, 'Stay awake for 4 hours'),
+          sch.override ? h('button', { class: 'btn', type: 'button', onclick: () => apply(null) }, 'Back to the schedule') : null)),
+    ];
   }
 
   // ---- updates -----------------------------------------------------------

@@ -445,3 +445,13 @@ body {
 .sb-chip small { font-size: 0.72em; margin-left: calc(0.3 * var(--u)); }
 @keyframes sbtick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .sb-track { animation: none; } }
+
+/* ---- sleep schedule: black screen, very dim dashboard, or a dim clock ---- */
+#sleep { position: fixed; inset: 0; z-index: 20; background: #000; display: flex; align-items: center; justify-content: center; text-align: center; opacity: 0; visibility: hidden; transition: opacity 1.5s, visibility 0s 1.5s; }
+html[data-sleep] #sleep { opacity: 1; visibility: visible; transition: opacity 1.5s; }
+html[data-sleep='dim'] #sleep { opacity: 0.94; }
+.sleep-clock { display: none; color: #4a4a4a; }
+html[data-sleep='clock'] .sleep-clock { display: block; }
+.sleep-time { font-size: 16vmin; font-weight: 200; line-height: 1; }
+.sleep-date { font-size: 3.2vmin; margin-top: 2vmin; letter-spacing: 0.05em; }
+html[data-sleep='off'] #root, html[data-sleep='clock'] #root { visibility: hidden; transition: visibility 0s 1.5s; } /* nothing to paint while it is black */

@@ -282,6 +282,8 @@ EOF
       if ! apt-get install -y -qq cage >/dev/null 2>&1; then
         warn "cage is not available on this OS; falling back to x11 mode."
         KIOSK=x11
+      else
+        apt-get install -y -qq wlr-randr >/dev/null 2>&1 || warn "wlr-randr is not available; the schedule's \"switch the monitor off\" option will only black out the page."
       fi
     fi
     if [ "$KIOSK" = x11 ]; then

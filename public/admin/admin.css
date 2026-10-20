@@ -80,3 +80,4 @@ input[type=range] { width:100%; accent-color:var(--accent); }
 .upd-block { margin-top:12px; padding:9px 12px; border-radius:8px; background:var(--bg); border:1px dashed var(--line); font-size:13px; word-break:break-word; } .upd-block .btn { margin-top:8px; }
 .upd-changes { margin:6px 0 0; padding-left:18px; font-size:14px; } .upd-changes li { margin:3px 0; } .upd-changes code { color:var(--muted); font-size:12px; }
 .badge-dot { color:var(--accent); font-size:10px; vertical-align:middle; }
+.daybtns { display:flex; gap:6px; flex-wrap:wrap; }

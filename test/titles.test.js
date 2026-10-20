@@ -59,7 +59,7 @@ test('every widget type can be renamed (the title fields are generic, not per-wi
 
 test('admin tabs: Themes has its own tab (theme, background, night); Display keeps layout and basics', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.js'), 'utf8');
-  assert.match(src, /const TABS = \{ widgets: 'Widgets', display: 'Display', themes: 'Themes', google:/);
+  assert.match(src, /const TABS = \{ widgets: 'Widgets', display: 'Display', themes: 'Themes', schedule: 'Schedule', google:/);
   assert.match(src, /themes: viewThemes/);
   const fn = (name) => {
     const i = src.indexOf(`function ${name}() {`);

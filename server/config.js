@@ -52,6 +52,16 @@ const DEFAULTS = () => ({
     nightStart: 23,
     nightEnd: 6,
     nightDim: 0.35,
+    // Sleep schedule (Admin > Schedule). See public/schedule.js.
+    schedule: {
+      enabled: false,
+      rules: [{ days: [0, 1, 2, 3, 4, 5, 6], sleep: '23:00', wake: '06:00' }],
+      mode: 'off',
+      touchWake: true,
+      touchMinutes: 10,
+      monitorOff: false,
+      override: null,
+    },
   },
   admin: { password: '' },
   health: { token: '' },

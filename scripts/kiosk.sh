@@ -55,4 +55,7 @@ case "$MODE" in
     ;;
 esac
 
+# Follow the sleep schedule on the monitor itself (a no-op unless "Also switch the monitor off" is ticked in the admin).
+"$(dirname "$(readlink -f "$0")")/monitor-watch.sh" "$MODE" "$$" >/dev/null 2>&1 &
+
 exec "$BROWSER" "${FLAGS[@]}" "$URL"

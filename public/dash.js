@@ -265,6 +265,41 @@
     timers.push(setInterval(tick, 60000));
   }
 
+  // ---- sleep schedule (Admin > Schedule) -----------------------------------------------------------------------
+  // While asleep the screen goes black (or very dim, or shows a dim clock). Touching it wakes the display for a while.
+  function initSleep() {
+    const sch = PidashSchedule.sanitize(display.schedule);
+    if (!sch.enabled && !sch.override) return; // nothing can put it to sleep (a changed setting reloads the page)
+    const fmt = makeFmt(display);
+    const el = document.getElementById('sleep');
+    const timeEl = el.querySelector('.sleep-time');
+    const dateEl = el.querySelector('.sleep-date');
+    let awakeUntil = 0; // touch-to-wake: awake until this moment even though the schedule says sleep
+    let shown = null;
+    const tick = () => {
+      const asleep = PidashSchedule.status(sch, new Date()).asleep && Date.now() >= awakeUntil;
+      if (asleep !== shown) {
+        shown = asleep;
+        if (asleep) document.documentElement.dataset.sleep = sch.mode;
+        else delete document.documentElement.dataset.sleep;
+      }
+      if (asleep && sch.mode === 'clock') {
+        const now = new Date();
+        timeEl.textContent = fmt.time(now);
+        dateEl.textContent = fmt.dateLong(now);
+      }
+    };
+    const wake = () => {
+      if (!sch.touchWake || shown !== true) return;
+      awakeUntil = Date.now() + sch.touchMinutes * 60000;
+      tick();
+    };
+    el.addEventListener('pointerdown', wake);
+    document.addEventListener('keydown', wake);
+    tick();
+    timers.push(setInterval(tick, 15000));
+  }
+
   function liveReload() {
     const reload = () => setTimeout(() => location.reload(), 300);
     try {
@@ -294,6 +329,7 @@
     PIDASH_APPLY_LAYOUT(display);
     PidashFit.setMode(display.contentFit);
     document.title = display.title || 'PiDash';
+    initSleep();
     applyLayout();
     window.addEventListener('resize', applyLayout);
     let resizeT = 0;
