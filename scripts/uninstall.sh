@@ -6,11 +6,12 @@ PURGE=0
 [ "${1:-}" = "--purge" ] && PURGE=1
 [ "$(id -u)" -eq 0 ] || { echo "Run as root: sudo $0" >&2; exit 1; }
 
-systemctl disable --now pidash-kiosk.service pidash.service 2>/dev/null || true
+systemctl disable --now pidash-update.path pidash-kiosk.service pidash.service 2>/dev/null || true
 rm -f /etc/systemd/system/pidash.service /etc/systemd/system/pidash-kiosk.service \
+      /etc/systemd/system/pidash-update.path /etc/systemd/system/pidash-update.service \
       /etc/xdg/autostart/pidash-kiosk.desktop /etc/pam.d/cage
 systemctl daemon-reload
-rm -rf /opt/pidash
+rm -rf /opt/pidash /opt/pidash.old /opt/pidash.new /opt/pidash.failed /usr/local/lib/pidash /run/pidash-update
 
 # If kiosk mode replaced a desktop login manager, bring it back.
 if systemctl list-unit-files 2>/dev/null | grep -qE '^(lightdm|gdm3?|sddm)\.service'; then

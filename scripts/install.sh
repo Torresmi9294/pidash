@@ -135,6 +135,11 @@ tar -C "$SRC_DIR" --exclude=./.git --exclude=./node_modules --exclude=./data --e
   if [ -f package-lock.json ]; then npm ci --omit=dev --no-audit --no-fund --loglevel=error
   else npm install --omit=dev --no-audit --no-fund --loglevel=error; fi
 )
+# Record which commit this is, so the admin page can tell when GitHub has something newer.
+rm -f "$APP_DIR/.version"
+if command -v git >/dev/null && SHA="$(git -C "$SRC_DIR" rev-parse HEAD 2>/dev/null)" && [[ $SHA =~ ^[0-9a-f]{40}$ ]]; then
+  printf '{"sha":"%s","installedAt":"%s"}\n' "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$APP_DIR/.version"
+fi
 chown -R root:root "$APP_DIR"
 chmod 755 "$APP_DIR/scripts/"*.sh
 
@@ -149,12 +154,15 @@ if [ ! -f "$ENV_FILE" ]; then
 PORT=${PORT:-8080}
 HOST=0.0.0.0
 DATA_DIR=$DATA_DIR
+PIDASH_INSTALL=systemd
 # KIOSK_URL=http://localhost:8080/
 # KIOSK_EXTRA_FLAGS=--force-device-scale-factor=1.25
 EOF
 elif [ -n "$PORT" ]; then
   sed -i "s/^PORT=.*/PORT=$PORT/" "$ENV_FILE"
 fi
+# Installs made before one-click updates existed don't have this line.
+grep -q '^PIDASH_INSTALL=' "$ENV_FILE" || echo 'PIDASH_INSTALL=systemd' >> "$ENV_FILE"
 chmod 644 "$ENV_FILE"
 PORT="$(sed -n 's/^PORT=//p' "$ENV_FILE" | head -n1)"
 
@@ -184,6 +192,43 @@ CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+# ------------------------------------------------- one-click update helper
+# The web server is sandboxed and cannot change its own code. For the admin "Update" button it drops a request file;
+# this root-owned helper (outside the app folder) notices it and does the install. See scripts/update.sh.
+mkdir -p /usr/local/lib/pidash
+install -m 755 "$APP_DIR/scripts/update.sh" /usr/local/lib/pidash/update.sh
+cat > "$ENV_DIR/update.conf" <<EOF
+REPO=Torresmi9294/pidash
+BRANCH=main
+APP_DIR=$APP_DIR
+NODE_DIR=$NODE_DIR
+ENV_FILE=$ENV_FILE
+REQUEST_FILE=$HOME_DIR/update.request
+STATE_DIR=/run/pidash-update
+HELPER_DST=/usr/local/lib/pidash/update.sh
+EOF
+chmod 644 "$ENV_DIR/update.conf"
+rm -f "$HOME_DIR/update.request"
+cat > /etc/systemd/system/pidash-update.path <<EOF
+[Unit]
+Description=Watch for a PiDash update request from the admin page
+
+[Path]
+PathExists=$HOME_DIR/update.request
+Unit=pidash-update.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+cat > /etc/systemd/system/pidash-update.service <<'EOF'
+[Unit]
+Description=Install a PiDash update (requested from the admin page)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/pidash/update.sh
 EOF
 
 # ------------------------------------------------------------------- kiosk
@@ -292,6 +337,7 @@ esac
 # --------------------------------------------------------------- start up
 systemctl daemon-reload
 systemctl enable pidash.service >/dev/null 2>&1
+systemctl enable --now pidash-update.path >/dev/null 2>&1
 systemctl restart pidash.service
 [ -f /etc/systemd/system/pidash-kiosk.service ] && systemctl enable pidash-kiosk.service >/dev/null 2>&1
 
@@ -322,7 +368,7 @@ esac
 cat <<EOF
 
     Logs    : journalctl -u pidash -f
-    Upgrade : git pull && sudo ./scripts/install.sh
+    Upgrade : Admin > Updates > Update now   (or: git pull && sudo ./scripts/install.sh)
     Remove  : sudo ./scripts/uninstall.sh
 
   Tip: set an admin password under Admin > Security.

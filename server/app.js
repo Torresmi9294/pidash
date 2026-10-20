@@ -9,6 +9,7 @@ const google = require('./google');
 const store = require('./store');
 const health = require('./health');
 const logos = require('./logos');
+const updater = require('./updater');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const BG_DIR = path.join(config.DATA_DIR, 'backgrounds');
@@ -388,6 +389,16 @@ function createApp() {
     }
     broadcast();
     res.json({ deleted: name });
+  });
+
+  // Updates: check GitHub, and (systemd installs) ask the root helper to install the latest version.
+  admin.get('/update/status', async (req, res) => res.json(await updater.status({ force: req.query.force === '1' })));
+  admin.post('/update/install', (req, res) => {
+    try {
+      res.json(updater.requestInstall());
+    } catch (e) {
+      res.status(e.status || 400).json({ error: e.message });
+    }
   });
 
   admin.get('/new-id/:type', (req, res) => res.json({ id: config.newId(req.params.type.replace(/[^a-z0-9-]/gi, '')) }));

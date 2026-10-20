@@ -37,6 +37,8 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 
 The installer detects the CPU, installs Node.js (checksum-verified) if the system has none, creates a locked-down `pidash` service user, sets up systemd services and Chromium kiosk mode, and prints the URLs when finished. Re-run it after a `git pull` to upgrade. Your settings are kept.
 
+**Updating:** open **Admin > Updates** and press **Check for updates**, then **Update now**. PiDash downloads the newest version from GitHub, restarts, and automatically rolls back if the new version doesn't start. It requires an admin password (updates install code) and is available once you've run the installer from this version or newer (`git pull && sudo ./scripts/install.sh` one last time). Docker installs update with `docker compose pull && docker compose up -d`.
+
 ### Hardware support
 
 | Hardware | CPU / OS | Server | On-screen kiosk |

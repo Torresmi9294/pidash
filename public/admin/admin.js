@@ -87,13 +87,13 @@
   }
 
   // ---- tabs --------------------------------------------------------------
-  const TABS = { widgets: 'Widgets', display: 'Display', themes: 'Themes', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security' };
+  const TABS = { widgets: 'Widgets', display: 'Display', themes: 'Themes', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security', updates: 'Updates' };
 
   function render() {
     $('#tabs').replaceChildren(...Object.entries(TABS).map(([k, label]) =>
-      h('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; render(); } }, label)));
+      h('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; render(); } }, label, k === 'updates' && upd && upd.state === 'update-available' ? h('span', { class: 'badge-dot', title: 'Update available' }, ' ●') : null)));
     const view = $('#view');
-    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, themes: viewThemes, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity })[tab]());
+    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, themes: viewThemes, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity, updates: viewUpdates })[tab]());
   }
 
   // ---- widgets -----------------------------------------------------------
@@ -581,6 +581,91 @@
         h('input', { type: 'password', autocomplete: 'new-password', oninput: (e) => { cfg.admin.newPassword = e.target.value; touch(); } })))];
   }
 
+  // ---- updates -----------------------------------------------------------
+  let upd = null;          // last /update/status answer
+  let updBusy = false;     // a request in flight
+  let installing = null;   // { prevAt } while we wait for the helper to finish
+  let pollTimer;
+
+  async function loadUpdate(force) {
+    updBusy = true;
+    if (tab === 'updates') render();
+    try { upd = await api('GET', `/update/status${force ? '?force=1' : ''}`); } finally { updBusy = false; render(); }
+  }
+
+  function pollInstall() {
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(async () => {
+      try {
+        upd = await api('GET', '/update/status');
+      } catch { /* the server is restarting - keep waiting */ }
+      const hs = upd && upd.helper;
+      const mine = hs && hs.at !== installing.prevAt;
+      if (mine && hs.state === 'done') {
+        toast('Updated - reloading');
+        setTimeout(() => location.reload(), 1200);
+        return;
+      }
+      if (mine && hs.state === 'failed') { installing = null; render(); return; }
+      if (Date.now() - installing.started > 15 * 60e3) { installing = null; render(); return; }
+      render();
+      pollInstall();
+    }, 2000);
+  }
+
+  const when = (iso) => (iso ? new Date(iso).toLocaleString() : '');
+
+  function viewUpdates() {
+    if (!upd && !updBusy) loadUpdate(false).catch((e) => toast(e.message, true));
+    const p = h('div', { class: 'panel' }, h('h2', {}, 'Software updates'));
+    if (!upd) return [h('div', { class: 'panel' }, h('h2', {}, 'Software updates'), h('p', { class: 'muted' }, 'Checking GitHub...'))];
+    const line = (label, v) => h('div', { class: 'upd-line' }, h('span', { class: 'muted' }, label), h('span', {}, v));
+    const cur = upd.current;
+    p.append(
+      line('Installed', cur ? `${cur.short}${cur.date ? ` (${when(cur.date)})` : cur.installedAt ? ` (installed ${when(cur.installedAt)})` : ''}` : 'unknown version'),
+      line('Latest on GitHub', upd.latest ? `${upd.latest.short} - ${upd.latest.message}${upd.latest.date ? ` (${when(upd.latest.date)})` : ''}` : 'not checked'),
+      line('Source', `${upd.repo} (${upd.branch})${upd.checkedAt ? ` - checked ${when(upd.checkedAt)}` : ''}`));
+
+    const msg = { 'up-to-date': 'You are up to date.', 'update-available': 'An update is available.', 'unknown-current': 'GitHub has a version, but this install does not know which version it is running - installing will bring it up to date.', ahead: 'This install is newer than GitHub (a local or development build).', unknown: '' }[upd.state];
+    if (upd.error) p.append(h('p', { class: 'upd-msg err' }, `Could not check for updates: ${upd.error}`));
+    else if (msg) p.append(h('p', { class: `upd-msg ${upd.state === 'up-to-date' ? 'ok' : upd.state === 'update-available' || upd.state === 'unknown-current' ? 'new' : ''}` }, msg));
+
+    const hs = upd.helper;
+    const live = installing && hs && hs.at !== installing.prevAt ? hs : null;
+    if (installing) {
+      p.append(h('p', { class: 'upd-msg new' }, `${live ? live.message : 'Update requested - waiting for the updater to start'}...`),
+        h('p', { class: 'muted small' }, 'PiDash restarts during the update and this page will reload by itself. The display reconnects automatically.'));
+    } else if (hs && hs.state === 'failed' && Date.now() - Date.parse(hs.at) < 3600e3) {
+      p.append(h('p', { class: 'upd-msg err' }, `The last update failed: ${hs.message}`));
+    }
+
+    const canInstall = upd.canInstall && (upd.state === 'update-available' || upd.state === 'unknown-current') && !installing;
+    p.append(h('div', { class: 'row', style: 'margin-top:12px' },
+      h('button', { class: 'btn', disabled: updBusy || !!installing, onclick: guard(() => loadUpdate(true)) }, updBusy ? 'Checking...' : 'Check for updates'),
+      canInstall ? h('button', { class: 'btn primary', onclick: guard(async () => {
+        if (!confirm(`Install ${upd.latest.short} and restart PiDash now?${dirty ? '\n\nYou have unsaved changes on this page - they will be lost.' : ''}`)) return;
+        await api('POST', '/update/install');
+        installing = { prevAt: hs ? hs.at : null, started: Date.now() };
+        render();
+        pollInstall();
+      }) }, 'Update now') : null));
+
+    if (!installing && !upd.canInstall && upd.blocker && upd.blocker.code !== 'busy' && (upd.state === 'update-available' || upd.state === 'unknown-current')) {
+      p.append(h('div', { class: 'upd-block' }, upd.blocker.text,
+        upd.blocker.code === 'no-password' ? h('div', {}, h('button', { class: 'btn sm', onclick: () => { tab = 'security'; render(); } }, 'Go to Security')) : null));
+    }
+
+    const out = [p];
+    if (upd.changes && upd.changes.length && upd.state === 'update-available') {
+      out.push(h('div', { class: 'panel' }, h('h2', {}, `What's new (${upd.changes.length}${upd.changes.length === 25 ? '+' : ''})`),
+        h('ul', { class: 'upd-changes' }, upd.changes.map((c) => h('li', {}, h('code', {}, c.sha), ' ', c.message)))));
+    }
+    out.push(h('div', { class: 'panel' }, h('h2', {}, 'How updating works'),
+      h('p', { class: 'muted small' }, 'Updates come from the PiDash GitHub project. Your settings, API keys and uploaded pictures are kept. A small root-owned helper installs the new version and restarts PiDash; if the new version does not start, the previous one is restored automatically. Docker installs update with: docker compose pull && docker compose up -d'),
+      h('p', { class: 'muted small' }, 'Updates are only offered when an admin password is set, because they install code on this device.')));
+    return out;
+  }
+
   // ---- load / save -------------------------------------------------------
   async function save(quiet) {
     const body = { display: cfg.display, google: cfg.google, widgets: cfg.widgets, admin: cfg.admin.newPassword !== undefined ? { newPassword: cfg.admin.newPassword } : undefined };
@@ -597,5 +682,7 @@
   guard(async () => {
     [cfg, types] = await Promise.all([api('GET', '/config'), api('GET', '/widget-types')]);
     render();
+    // Quietly look for updates so the tab can show a dot.
+    if (tab !== 'updates') api('GET', '/update/status').then((s) => { upd = s; render(); }).catch(() => {});
   })();
 })();
