@@ -122,6 +122,12 @@
             { value: 'fill', label: 'Fill - shrink to fit and grow to use spare room' },
             { value: 'shrink', label: 'Shrink only - never enlarge' },
             { value: 'off', label: 'Off - fixed size' }], help: 'How this widget\'s contents are sized to its cell so nothing is cut off.' }, w.options),
+          t.noContentFit ? null : field({ key: 'overflow', label: 'When content still doesn\'t fit', type: 'select', rerender: true, options: [
+            { value: 'trim', label: 'Hide the extra items (shows "+N more")' },
+            { value: 'scroll', label: 'Auto-scroll slowly' }], help: 'Auto-scroll keeps everything at a readable size and scrolls what is cut off, pausing at the top and bottom. It applies to rotating, grid and pane widgets (not the always-visible side panel), so give it enough seconds on screen to finish a scroll.' }, w.options),
+          !t.noContentFit && w.options.overflow === 'scroll' ? field({ key: 'scrollSpeed', label: 'Scroll speed', type: 'select', options: [
+            { value: 'very-slow', label: 'Very slow' }, { value: 'slow', label: 'Slow' }, { value: 'medium', label: 'Medium' },
+            { value: 'fast', label: 'Fast' }, { value: 'very-fast', label: 'Very fast' }] }, w.options) : null,
           w.slot !== 'sidebar' ? field({ key: 'durationSec', label: 'Seconds on screen (blank = default)', type: 'number', placeholder: String(cfg.display.rotateSeconds) }, w.options) : null,
           t.fields.length ? t.fields.map((f) => field(f, w.options)) : h('p', { class: 'muted' }, 'No settings for this widget.')) : null);
     });

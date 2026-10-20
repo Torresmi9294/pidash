@@ -105,6 +105,8 @@ function unmaskInto(incoming, existing) {
       if (!options.title) delete options.title;
       if ('hideTitle' in options) options.hideTitle = options.hideTitle === true;
       if ('contentFit' in options && !['fill', 'shrink', 'off'].includes(options.contentFit)) delete options.contentFit;
+      if ('overflow' in options && !['trim', 'scroll'].includes(options.overflow)) delete options.overflow;
+      if ('scrollSpeed' in options && !['very-slow', 'slow', 'medium', 'fast', 'very-fast'].includes(options.scrollSpeed)) delete options.scrollSpeed;
       for (const key of widgets.secretKeys(w.type)) {
         if (options[key] === config.SECRET_MASK) options[key] = prev && prev.options ? prev.options[key] || '' : '';
       }

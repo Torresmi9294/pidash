@@ -113,11 +113,17 @@
     });
   }
 
+  // Widgets that fill their cell themselves (the photo/video slideshows) are never fitted or scrolled.
+  const selfFilling = (c) => (typeof c.def.fit === 'function' ? c.def.fit(c.w.options || {}) === false : c.def.fit === false);
   function fitNow(c) {
     if (!c.def) return;
-    if (!fitEnabled(c)) { c.body.style.removeProperty('--u'); return; }
-    if (inSidebar(c)) fitSidebar();
-    else PidashFit.card(c.body, { max: c.def.fitMax, floor: c.def.fitFloor, mode: fitModeOf(c) });
+    if (selfFilling(c)) { c.body.style.removeProperty('--u'); return; }
+    if (inSidebar(c)) { // the side panel shares one scale and never scrolls
+      if (fitModeOf(c) === 'off') c.body.style.removeProperty('--u'); else fitSidebar();
+      return;
+    }
+    const o = c.w.options || {};
+    PidashFit.card(c.body, { max: c.def.fitMax, floor: c.def.fitFloor, mode: fitModeOf(c), overflow: o.overflow, speed: o.scrollSpeed });
   }
 
   function fitSoon(c) {

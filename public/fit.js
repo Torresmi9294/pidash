@@ -11,6 +11,9 @@
   const MIN = 0.35;      // absolute floor for widgets that can't be trimmed
   const FILL_MAX = 1.6;  // default upper limit when growing into spare room
   let mode = 'fill';     // 'fill' | 'shrink' | 'off'
+  const SCROLL_MIN = 0.9; // auto-scroll widgets are only shrunk to about this before they scroll instead
+  const SCROLL_PAUSE = 3; // seconds to rest at the top and bottom of an auto-scroll
+  const SPEEDS = { 'very-slow': 10, slow: 20, medium: 35, fast: 60, 'very-fast': 100 }; // pixels per second
 
   const MEDIA = /^(IMG|VIDEO|CANVAS|SVG|PICTURE)$/i;
 
@@ -120,6 +123,67 @@
     return out;
   }
 
+  // ---- auto-scroll -------------------------------------------------------------------------------------------
+  // A widget set to "scroll" keeps all its content at a readable size and slowly scrolls whatever is cut off,
+  // pausing at the top and bottom. Whatever element hides the overflow scrolls (a list inside the widget, or the
+  // widget body itself), so headings and totals can stay put.
+  const scrollable = (n) => {
+    if (n.hasAttribute && n.hasAttribute('data-fit-ignore')) return false;
+    if (n.scrollHeight <= n.clientHeight + 1) return false;
+    const cs = getComputedStyle(n);
+    if (cs.overflowY === 'visible' || cs.overflowY === 'clip') return false;
+    if (cs.webkitLineClamp && cs.webkitLineClamp !== 'none') return false; // a clamped title is cut off on purpose
+    const kids = n.children;
+    return !(kids && kids.length && Array.prototype.every.call(kids, (k) => MEDIA.test(k.tagName || '')));
+  };
+
+  function scrollTargets(body) {
+    const all = [body, ...body.querySelectorAll('*')].filter(scrollable);
+    return all.filter((n) => !all.some((m) => m !== n && m.contains && m.contains(n))); // outermost only
+  }
+
+  function stopScroll(body) {
+    const run = body._pfScroll;
+    if (!run) return;
+    run.stopped = true;
+    if (run.raf) cancelAnimationFrame(run.raf);
+    run.targets.forEach((t) => { t.scrollTop = 0; });
+    body._pfScroll = null;
+  }
+
+  // Returns true when something is scrolling. Called on every re-fit, so an existing scroll over the same
+  // elements is left running (and keeps its position) instead of jumping back to the top.
+  function startScroll(body, speed) {
+    const targets = scrollTargets(body);
+    if (!targets.length) { stopScroll(body); return false; }
+    const pps = SPEEDS[speed] || SPEEDS.medium;
+    const old = body._pfScroll;
+    if (old && old.targets.length === targets.length && old.targets.every((t, i) => t === targets[i])) { old.pps = pps; return true; }
+    stopScroll(body);
+    const run = { targets, pps, raf: 0, stopped: false, last: 0, state: targets.map(() => ({ pos: 0, dir: 1, wait: SCROLL_PAUSE })) };
+    const tick = (now) => {
+      if (run.stopped) return;
+      if (!body.isConnected) { body._pfScroll = null; return; }
+      const dt = run.last ? Math.min(0.25, (now - run.last) / 1000) : 0;
+      run.last = now;
+      targets.forEach((t, i) => {
+        const st = run.state[i];
+        if (!t.clientHeight) { st.pos = 0; st.dir = 1; st.wait = SCROLL_PAUSE; t.scrollTop = 0; return; } // hidden (another slide is showing): start over
+        const max = t.scrollHeight - t.clientHeight;
+        if (max <= 1) return;
+        if (st.wait > 0) { st.wait -= dt; return; }
+        st.pos += st.dir * run.pps * dt;
+        if (st.pos >= max) { st.pos = max; st.dir = -1; st.wait = SCROLL_PAUSE; }
+        else if (st.pos <= 0) { st.pos = 0; st.dir = 1; st.wait = SCROLL_PAUSE; }
+        t.scrollTop = st.pos;
+      });
+      run.raf = requestAnimationFrame(tick);
+    };
+    body._pfScroll = run;
+    run.raf = requestAnimationFrame(tick);
+    return true;
+  }
+
   // opts.mode (per widget) wins over the global default mode
   const modeOf = (opts) => (opts && opts.mode) || mode;
   const ceiling = (opts) => (modeOf(opts) === 'shrink' ? 1 : Math.max(1, (opts && opts.max) || FILL_MAX));
@@ -127,13 +191,29 @@
   // One widget in its own cell (rotating stage, grid tile, pane).
   function card(body, opts) {
     restore(body);
+    const scrolling = !!opts && opts.overflow === 'scroll';
     const floor = Math.min(Math.max((opts && opts.floor) || READABLE, MIN), 1);
-    if (modeOf(opts) === 'off') { body.style.removeProperty('--u'); delete body.dataset.fit; return 1; }
+    if (modeOf(opts) === 'off') {
+      body.style.removeProperty('--u');
+      delete body.dataset.fit;
+      if (scrolling && body.isConnected && body.clientHeight > 0) startScroll(body, opts.speed); else stopScroll(body);
+      return 1;
+    }
     if (!body.isConnected || body.clientHeight <= 0 || body.clientWidth <= 0) return null;
     const set = (v) => apply(body, v);
     const top = Math.max(ceiling(opts), floor);
     let ignore = null;
     const bad = () => overflows(body, ignore);
+
+    if (scrolling) {
+      // Keep text readable: shrink only down to SCROLL_MIN, then scroll what is still cut off.
+      const sfloor = Math.max(floor, SCROLL_MIN);
+      const fit = search(set, bad, Math.max(top, sfloor), sfloor);
+      if (fit.ok) { stopScroll(body); body.dataset.fit = fit.s.toFixed(2); return fit.s; }
+      if (startScroll(body, opts.speed)) { body.dataset.fit = sfloor.toFixed(2); return sfloor; }
+      // Nothing scrollable is cut off (a layout quirk, not too much content): fall through to the normal fit.
+    }
+    stopScroll(body);
 
     let r = search(set, bad, top, floor);
     if (!r.ok) {
@@ -186,5 +266,5 @@
     return r.s;
   }
 
-  window.PidashFit = { card, group, overflows, setMode: (m) => { mode = ['fill', 'shrink', 'off'].includes(m) ? m : 'fill'; }, mode: () => mode };
+  window.PidashFit = { card, group, overflows, stopScroll, SPEEDS, setMode: (m) => { mode = ['fill', 'shrink', 'off'].includes(m) ? m : 'fill'; }, mode: () => mode };
 })();
