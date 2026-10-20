@@ -190,7 +190,7 @@
         h('div', { class: 'body' }, rows.length ? rows : h('p', { class: 'muted' }, 'Enable some widgets on the Widgets tab first.')));
     };
 
-    return h('div', { class: 'panel' }, h('h2', {}, 'Grid panes'),
+    return h('div', { class: 'panel' }, h('h2', {}, 'Rotating Grid Panes'),
       h('p', { class: 'muted small' }, 'Each pane is one cell of the grid. A pane with several widgets rotates through them in the order shown (use the arrows); with one widget it stays put. Wide/tall/large panes take more room, which suits the calendar. A widget can appear in more than one pane. A widget\'s own "Seconds on screen" setting overrides the pane timing.'),
       panes.length ? panes.map(paneCard) : h('p', { class: 'muted' }, 'No panes yet, so PiDash uses a suggested arrangement: each always-visible widget gets its own pane, and all the rotating widgets share one. Start from it and adjust:'),
       h('div', { class: 'row', style: 'margin-top:10px' },
