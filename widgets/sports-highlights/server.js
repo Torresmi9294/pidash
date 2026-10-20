@@ -30,6 +30,8 @@ exports.meta = {
     },
     { key: 'playVideo', label: 'Play the video clips (muted). Needs a Pi 4/5 or a PC; off = show thumbnails only', type: 'checkbox' },
     { key: 'itemSeconds', label: 'Seconds per item (thumbnails)', type: 'number', placeholder: '12' },
+    { key: 'showTimer', label: 'Show the timer (progress bar under the slide)', type: 'checkbox', default: true },
+    { key: 'showDots', label: 'Show the dots (one per slide)', type: 'checkbox', default: true },
     { key: 'maxItems', label: 'Max items', type: 'number', placeholder: '8' },
   ],
 };

@@ -20,6 +20,8 @@ exports.meta = {
       ],
     },
     { key: 'itemSeconds', label: 'Seconds per story (slideshow)', type: 'number', placeholder: '12' },
+    { key: 'showTimer', label: 'Show the timer (progress bar) - slideshow only', type: 'checkbox', default: true },
+    { key: 'showDots', label: 'Show the dots (one per story) - slideshow only', type: 'checkbox', default: true },
     { key: 'showSummary', label: 'Show a short summary under each headline', type: 'checkbox' },
   ],
 };

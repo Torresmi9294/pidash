@@ -68,6 +68,9 @@ function slideshow(el, d, { h, options, slot }) {
   const bar = h('div', { class: 'sh-progress' }, h('i'));
   const dots = h('div', { class: 'sh-dots' }, items.map(() => h('i')));
   el.replaceChildren(stage, bar, dots);
+  // Optional: hide the timer (progress bar) and/or the dots. The stories still rotate; the picture grows into the space.
+  if (options.showTimer === false) bar.style.display = 'none';
+  if (options.showDots === false) dots.style.display = 'none';
 
   function show(n) {
     i = (n + items.length) % items.length;

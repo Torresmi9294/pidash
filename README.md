@@ -120,7 +120,7 @@ Every highlight is an option in the admin, so you decide what stands out:
 - **Highlight what matters** (on by default, per widget). ESPN: leader in green, trailing team dimmed, close games flagged, medals and win/loss streaks in the standings. Calendar: live **NOW** / **NEXT** markers and dimmed past events. Reminders: overdue in red, due-today in amber. Weather: rain, storm, freezing, heat and wind alert chips. Health: goal-reached glow, step streaks and best day.
 - **Matchup callouts** (ESPN): top score, biggest blowout, closest game and your team's rank/streak.
 - **Pinned items**: star reminders (Admin → Reminders), list keywords to highlight in the Calendar (e.g. `birthday, flight`), and pin extra ESPN team IDs such as a rival.
-- **Sports video highlights**: add the *Sports Highlights* widget. Tick *Play the video clips* to play them muted on the display (best on a Pi 4/5 or PC; otherwise it shows thumbnails and headlines). It uses ESPN's public, unofficial feeds for personal use.
+- **Sports video highlights**: add the *Sports Highlights* widget. Tick *Play the video clips* to play them muted on the display (best on a Pi 4/5 or PC; otherwise it shows thumbnails and headlines). Both Sports Highlights and the News slideshow have **Show the timer** and **Show the dots** checkboxes if you'd rather have a clean slide with no progress bar or dots. It uses ESPN's public, unofficial feeds for personal use.
 
 ### Photo background
 
