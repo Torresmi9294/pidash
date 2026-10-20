@@ -125,7 +125,7 @@ Pick **Admin → Display → Layout → Rotating grid**, then build your panes: 
 
 ### Live Scoreboard
 
-Add the **Live Scoreboard** widget and pick up to three leagues. *Games to show* can be everything in the feed (the NFL feed is the whole week), today's games, live and upcoming only, or live games only (it then tells you when the next game starts). Put your teams in *My teams* (abbreviations like `NE` or names like `Celtics`) to star and sort them first, or tick *Only show games with my teams*. It refreshes every 30 seconds while any game is live and only every few minutes otherwise, so it stays polite to the free feed. The feed is unofficial and can change or lag a little behind TV.
+Add the **Live Scoreboard** widget and pick up to three leagues. Choose a **View**: *Cards* (a grid of games), *List* (one dense line per game), *Slideshow* (one big game at a time, with team logos, a large score, the clock and down/count; it shows only live games while any game is live, otherwise everything, and you set the seconds per game) or *Ticker* (a scrolling strip of scores, with slow/medium/fast speed). *Games to show* can be everything in the feed (the NFL feed is the whole week), today's games, live and upcoming only, or live games only (it then tells you when the next game starts). Put your teams in *My teams* (abbreviations like `NE` or names like `Celtics`) to star and sort them first, or tick *Only show games with my teams*. It refreshes every 30 seconds while any game is live and only every few minutes otherwise, so it stays polite to the free feed. The feed is unofficial and can change or lag a little behind TV.
 
 ### Highlights
 

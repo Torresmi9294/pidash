@@ -23,6 +23,22 @@ exports.meta = {
         { value: 'live', label: 'Live games only' },
       ],
     },
+    {
+      key: 'view', label: 'View', type: 'select', rerender: true,
+      options: [
+        { value: 'cards', label: 'Cards - a grid of game cards' },
+        { value: 'list', label: 'List - one line per game' },
+        { value: 'slideshow', label: 'Slideshow - one big game at a time' },
+        { value: 'ticker', label: 'Ticker - a scrolling strip of scores' },
+      ],
+    },
+    { key: 'slideLive', label: 'Only show live games while any game is live', type: 'checkbox', default: true, showIf: { key: 'view', value: 'slideshow' }, help: 'When nothing is live it goes back to showing every game.' },
+    { key: 'slideSeconds', label: 'Seconds per game', type: 'number', placeholder: '8', showIf: { key: 'view', value: 'slideshow' } },
+    { key: 'showDots', label: 'Show the dots', type: 'checkbox', default: true, showIf: { key: 'view', value: 'slideshow' } },
+    {
+      key: 'tickerSpeed', label: 'Ticker speed', type: 'select', default: 'medium', showIf: { key: 'view', value: 'ticker' },
+      options: [{ value: 'slow', label: 'Slow' }, { value: 'medium', label: 'Medium' }, { value: 'fast', label: 'Fast' }],
+    },
     { key: 'favorites', label: 'My teams (comma-separated)', type: 'text', placeholder: 'NE, Celtics, Bruins', help: 'Abbreviations or names. Their games get a star and move to the top.' },
     { key: 'onlyFavorites', label: 'Only show games with my teams', type: 'checkbox' },
     { key: 'maxGames', label: 'Max games', type: 'number', placeholder: '12' },

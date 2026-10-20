@@ -56,7 +56,7 @@
       return h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: val === undefined ? !!f.default : val, onchange: (e) => set(e.target.checked) }), f.label);
     }
     if (f.type === 'select') {
-      return wrap(h('select', { onchange: (e) => { set(e.target.value); if (f.rerender) render(); } }, f.options.map((o) => h('option', { value: o.value, selected: (val || f.options[0].value) === o.value }, o.label))));
+      return wrap(h('select', { onchange: (e) => { set(e.target.value); if (f.rerender) render(); } }, f.options.map((o) => h('option', { value: o.value, selected: (val || f.default || f.options[0].value) === o.value }, o.label))));
     }
     if (f.type === 'color') {
       const hex = /^#[0-9a-f]{6}$/i.test(val || '') ? val : f.fallback || '#5ab0ff';
@@ -84,6 +84,14 @@
     };
     if (f.type === 'textarea') return wrap(h('textarea', common));
     return wrap(h('input', { type: f.secret ? 'password' : f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text', autocomplete: 'off', ...common }));
+  }
+
+  // A field with showIf: { key, value } only appears while that other setting has that value (its default counts).
+  function showField(f, type, options) {
+    if (!f.showIf) return true;
+    const ctl = type.fields.find((x) => x.key === f.showIf.key);
+    const cur = options[f.showIf.key] || (ctl && (ctl.default || (ctl.options && ctl.options[0].value)));
+    return cur === f.showIf.value;
   }
 
   // ---- tabs --------------------------------------------------------------
@@ -129,7 +137,7 @@
             { value: 'very-slow', label: 'Very slow' }, { value: 'slow', label: 'Slow' }, { value: 'medium', label: 'Medium' },
             { value: 'fast', label: 'Fast' }, { value: 'very-fast', label: 'Very fast' }] }, w.options) : null,
           w.slot !== 'sidebar' ? field({ key: 'durationSec', label: 'Seconds on screen (blank = default)', type: 'number', placeholder: String(cfg.display.rotateSeconds) }, w.options) : null,
-          t.fields.length ? t.fields.map((f) => field(f, w.options)) : h('p', { class: 'muted' }, 'No settings for this widget.')) : null);
+          t.fields.length ? t.fields.filter((f) => showField(f, t, w.options)).map((f) => field(f, w.options)) : h('p', { class: 'muted' }, 'No settings for this widget.')) : null);
     });
 
     return [

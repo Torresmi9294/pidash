@@ -224,3 +224,26 @@ test('client: cards are trim-able items, live games are flagged, nothing is buil
   assert.match(src, /sb-star/);
   assert.ok(!/text-overflow:\s*ellipsis/.test(css.slice(css.indexOf('/* ---- scoreboard ---- */'))), 'long names wrap instead of being truncated (a truncated name clips at every scale)');
 });
+
+test('views: cards (default), list, slideshow and ticker are offered, with their own settings only shown for their view', () => {
+  const view = sb.meta.fields.find((f) => f.key === 'view');
+  assert.deepEqual(view.options.map((o) => o.value), ['cards', 'list', 'slideshow', 'ticker']);
+  assert.equal(view.options[0].value, 'cards', 'cards stays the default so existing widgets do not change');
+  assert.equal(view.rerender, true);
+  const only = (k) => sb.meta.fields.find((f) => f.key === k).showIf;
+  assert.deepEqual(only('slideLive'), { key: 'view', value: 'slideshow' });
+  assert.deepEqual(only('slideSeconds'), { key: 'view', value: 'slideshow' });
+  assert.deepEqual(only('showDots'), { key: 'view', value: 'slideshow' });
+  assert.deepEqual(only('tickerSpeed'), { key: 'view', value: 'ticker' });
+  assert.equal(sb.meta.fields.find((f) => f.key === 'slideLive').default, true);
+
+  const client = fs.readFileSync(path.join(__dirname, '..', 'widgets', 'scoreboard', 'client.js'), 'utf8');
+  for (const v of ['cards', 'list', 'slideshow', 'ticker']) assert.match(client, new RegExp(`'${v}'`));
+  assert.match(client, /options\.slideLive !== false && anyLive/, 'slideshow shows only live games while any are live');
+  assert.match(client, /data-fit-ignore/, 'the ticker is meant to run wider than its box, so the fit must not shrink it');
+  assert.ok(!/\.innerHTML\s*=/.test(client));
+
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.js'), 'utf8');
+  assert.match(admin, /function showField\(f, type, options\)/);
+  assert.match(admin, /filter\(\(f\) => showField\(f, t, w\.options\)\)/);
+});
