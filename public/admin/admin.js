@@ -56,7 +56,7 @@
       return h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: val === undefined ? !!f.default : val, onchange: (e) => set(e.target.checked) }), f.label);
     }
     if (f.type === 'select') {
-      return wrap(h('select', { onchange: (e) => set(e.target.value) }, f.options.map((o) => h('option', { value: o.value, selected: (val || f.options[0].value) === o.value }, o.label))));
+      return wrap(h('select', { onchange: (e) => { set(e.target.value); if (f.rerender) render(); } }, f.options.map((o) => h('option', { value: o.value, selected: (val || f.options[0].value) === o.value }, o.label))));
     }
     if (f.type === 'color') {
       const hex = /^#[0-9a-f]{6}$/i.test(val || '') ? val : f.fallback || '#5ab0ff';
@@ -64,6 +64,16 @@
       const state = h('span', { class: 'muted small' }, val || 'theme default');
       return h('div', { class: 'f' }, h('span', { style: 'display:block;font-weight:600;font-size:13px;margin-bottom:3px' }, f.label),
         h('div', { class: 'row' }, picker, state, h('button', { class: 'btn sm', type: 'button', onclick: () => { set(''); render(); } }, 'Use theme default')),
+        f.help ? h('small', { class: 'muted' }, f.help) : null);
+    }
+    if (f.type === 'range') {
+      const has = val !== '' && val != null && Number.isFinite(Number(val));
+      const unit = f.unit || '';
+      const out = h('span', { class: 'muted small', style: 'min-width:92px' }, has ? `${val}${unit}` : `theme default (${f.default}${unit})`);
+      const input = h('input', { type: 'range', class: 'grow', min: f.min, max: f.max, step: f.step || 1, value: has ? val : (f.default ?? f.min),
+        oninput: (e) => { set(Number(e.target.value)); out.textContent = `${e.target.value}${unit}`; } });
+      return h('div', { class: 'f' }, h('span', { style: 'display:block;font-weight:600;font-size:13px;margin-bottom:3px' }, f.label),
+        h('div', { class: 'row' }, input, out, f.resettable ? h('button', { class: 'btn sm', type: 'button', onclick: () => { set(''); render(); } }, 'Theme default') : null),
         f.help ? h('small', { class: 'muted' }, f.help) : null);
     }
     const hadSecret = f.secret && val === MASK;
@@ -128,17 +138,51 @@
   }
 
   // ---- display -----------------------------------------------------------
-  function themeGrid(d, key, allowNone) {
-    const themes = Object.entries(window.PIDASH_THEMES).filter(([k]) => k !== 'dark');
-    const tile = (k, label, bg, text, accent, sel) => h('button', {
-      type: 'button', title: label, class: `tile ${sel ? 'sel' : ''}`,
-      style: `background:linear-gradient(135deg,${bg[0]},${bg[1]});color:${text};border-color:${sel ? accent : 'transparent'}`,
-      onclick: () => { d[key] = k; touch(); render(); },
-    }, h('b', { style: `color:${accent}` }, 'Aa'), h('span', {}, label));
-    const current = d[key] === 'dark' ? 'midnight' : d[key];
-    return h('div', { class: 'tiles' },
-      allowNone ? h('button', { type: 'button', class: `tile none ${!d[key] ? 'sel' : ''}`, onclick: () => { d[key] = ''; touch(); render(); } }, h('span', {}, 'Same as day')) : null,
-      themes.map(([k, t]) => tile(k, t.label, [t.vars['--bg1'], t.vars['--bg2']], t.vars['--text'], t.vars['--accent'], current === k)));
+  function themeGrid(d, key, allowNone, multi) {
+    const all = Object.entries(window.PIDASH_THEMES).filter(([k]) => k !== 'dark');
+    const pool = multi ? (d[key] = Array.isArray(d[key]) ? d[key] : []) : null;
+    const isSel = (k) => (multi ? pool.includes(k) : (d[key] === 'dark' ? 'midnight' : d[key]) === k);
+    const tile = ([k, t]) => {
+      const sel = isSel(k);
+      const v = t.vars;
+      return h('button', {
+        type: 'button', title: t.label, class: `tile ${sel ? 'sel' : ''}`,
+        style: `background:linear-gradient(135deg,${v['--bg1']},${v['--bg2']});color:${v['--text']};border-color:${sel ? v['--accent'] : 'transparent'}`,
+        onclick: () => {
+          if (multi) { const i = pool.indexOf(k); if (i >= 0) pool.splice(i, 1); else pool.push(k); } else d[key] = k;
+          touch(); render();
+        },
+      }, h('b', { style: `color:${v['--accent']}` }, multi && sel ? '\u2713' : 'Aa'), h('span', {}, t.label));
+    };
+    const none = allowNone ? h('button', { type: 'button', class: `tile none ${!d[key] ? 'sel' : ''}`, onclick: () => { d[key] = ''; touch(); render(); } }, h('span', {}, 'Same as day')) : null;
+    return h('div', {},
+      h('div', { class: 'tiles' }, none, all.filter(([, t]) => t.group !== 'seasonal').map(tile)),
+      h('div', { class: 'tile-group' }, 'Seasonal & holiday'),
+      h('div', { class: 'tiles' }, all.filter(([, t]) => t.group === 'seasonal').map(tile)));
+  }
+
+  // Fixed / Random / Seasonal theme controls (shown under the theme mode selector).
+  function themeModeControls(d, F) {
+    const mode = d.themeMode || 'fixed';
+    if (mode === 'random') {
+      return [
+        F('randomEvery', 'Pick a new theme', 'select', { options: [{ value: 'day', label: 'Once a day' }, { value: 'hour', label: 'Every hour' }, { value: 'load', label: 'Every time the screen loads' }] }),
+        F('randomSeasonal', 'Include the seasonal & holiday themes in the shuffle', 'checkbox'),
+        h('span', { style: 'display:block;font-weight:600;font-size:13px;margin:10px 0 4px' }, 'Shuffle among'),
+        h('p', { class: 'muted small' }, 'Tap themes to include them. With none selected, every classic theme is used (plus the seasonal ones if ticked above).'),
+        themeGrid(d, 'randomPool', false, true),
+      ];
+    }
+    if (mode === 'seasonal') {
+      const now = window.PIDASH_SEASON(new Date(), { hemisphere: d.seasonHemisphere, holidays: d.seasonHolidays !== false });
+      return [
+        h('p', { class: 'small' }, 'Today this shows: ', h('b', {}, now.label), window.PIDASH_THEMES[now.key].label === now.label ? ' theme' : ` (${window.PIDASH_THEMES[now.key].label} theme)`),
+        F('seasonHemisphere', 'Hemisphere (flips the four seasons)', 'select', { options: [{ value: 'north', label: 'Northern' }, { value: 'south', label: 'Southern' }] }),
+        F('seasonHolidays', 'Switch to holiday themes around the holidays', 'checkbox', { default: true }),
+        h('p', { class: 'muted small' }, 'Seasons: Winter Dec-Feb, Spring Mar-May, Summer Jun-Aug, Autumn Sep-Nov. Holidays (US dates): New Year Dec 31-Jan 2, Valentine\'s Feb 7-14, St. Patrick\'s Mar 10-17, 4th of July Jun 28-Jul 5, Halloween Oct 15-31, Thanksgiving Nov 16 until the day, Christmas Dec 1-26.'),
+      ];
+    }
+    return themeGrid(d, 'theme', false);
   }
 
   function layoutIcon(name) {
@@ -199,21 +243,138 @@
       panes.length && missing.length ? h('p', { class: 'small', style: 'color:var(--bad)' }, `Not shown on the grid: ${missing.map(label).join(', ')}`) : null);
   }
 
+  // ---- background: gradient, slideshow options and the photo manager -----------------------------
+  function backgroundPanel(d, F) {
+    const themeKey = d.themeMode === 'fixed' || !d.themeMode ? d.theme : window.PIDASH_RESOLVE_THEME(d);
+    const tv = (window.PIDASH_THEMES[themeKey] || window.PIDASH_THEMES.midnight).vars;
+    const hex = /^#[0-9a-f]{6}$/i;
+    const preview = h('div', { class: 'bg-preview', title: 'Preview of the gradient' });
+    const paint = () => {
+      const a = hex.test(d.bg1 || '') ? d.bg1 : tv['--bg1'];
+      const b = hex.test(d.bg2 || '') ? d.bg2 : tv['--bg2'];
+      const ang = Number.isFinite(Number(d.gradientAngle)) ? Number(d.gradientAngle) : 135;
+      preview.style.background = d.gradientStyle === 'solid' ? a : d.gradientStyle === 'radial' ? `radial-gradient(circle at 50% 35%, ${a}, ${b})` : `linear-gradient(${ang}deg, ${a}, ${b})`;
+    };
+    paint();
+
+    // photo manager (uploads and deletes apply immediately; they are not part of "Save & apply")
+    const MAXES = [['1280', '1280 px (small, fastest)'], ['1920', '1920 px (recommended)'], ['2560', '2560 px (large screens)'], ['0', 'Original size (no resizing)']];
+    let maxDim = 1920;
+    try { maxDim = Number(localStorage.getItem('pidash.photoMax') || 1920); } catch { /* private mode */ }
+    const fmtSize = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+    const gallery = h('div', { class: 'photos' });
+    const status = h('p', { class: 'small muted', style: 'min-height:1.2em' }, '');
+    const count = h('span', { class: 'muted small' }, '');
+    const warn = h('p', { class: 'small', style: 'color:var(--bad);display:none' }, 'Background is set to Photo slideshow but there are no photos yet, so the gradient is shown. Add some below.');
+
+    const loadPhotos = guard(async () => {
+      const list = await api('GET', '/backgrounds');
+      const total = list.reduce((n, p) => n + p.size, 0);
+      count.textContent = list.length ? `${list.length} photo${list.length === 1 ? '' : 's'}, ${fmtSize(total)}` : '';
+      warn.style.display = d.background === 'photos' && !list.length ? '' : 'none';
+      gallery.replaceChildren(...(list.length ? list.map((p) =>
+        h('div', { class: 'photo' },
+          h('img', { src: p.url, loading: 'lazy', alt: p.name }),
+          h('div', { class: 'pn', title: p.name }, p.name),
+          h('div', { class: 'small muted' }, fmtSize(p.size)),
+          h('button', { class: 'btn sm danger', type: 'button', title: `Delete ${p.name}`, onclick: guard(async () => {
+            if (!confirm(`Delete ${p.name}?`)) return;
+            await api('DELETE', `/backgrounds/${encodeURIComponent(p.name)}`);
+            await loadPhotos();
+          }) }, '\u2715'))) : [h('p', { class: 'muted small' }, 'No photos yet.')]));
+    });
+
+    // Big phone photos are shrunk in the browser first (smaller upload, faster Pi, and proxies with small upload limits cope).
+    async function prepare(file) {
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type) || !maxDim) return { blob: file, name: file.name };
+      let bmp;
+      try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { return { blob: file, name: file.name }; }
+      const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+      if (scale >= 1 && file.size < 2 * 1048576) { if (bmp.close) bmp.close(); return { blob: file, name: file.name }; }
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(bmp.width * scale));
+      c.height = Math.max(1, Math.round(bmp.height * scale));
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      if (bmp.close) bmp.close();
+      const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.88));
+      return blob && blob.size < file.size ? { blob, name: `${file.name.replace(/\.\w+$/, '')}.jpg` } : { blob: file, name: file.name };
+    }
+
+    async function uploadFiles(files) {
+      files = files.filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(f.name));
+      if (!files.length) return toast('Choose image files (JPG, PNG, WebP, GIF or AVIF).', true);
+      let done = 0;
+      const failed = [];
+      for (const f of files) {
+        status.textContent = `Uploading ${done + failed.length + 1} of ${files.length}: ${f.name} ...`;
+        try {
+          if (/heic|heif/i.test(f.type + f.name)) throw new Error('HEIC photos are not supported - export or share them as JPG first');
+          const { blob, name } = await prepare(f);
+          const res = await fetch(`/api/admin/backgrounds?name=${encodeURIComponent(name)}`, { method: 'POST', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob });
+          if (!res.ok) {
+            const j = await res.json().catch(() => ({}));
+            throw new Error(res.status === 413 ? 'too big for your web server or reverse proxy (raise its upload size limit, e.g. client_max_body_size)' : j.error || `HTTP ${res.status}`);
+          }
+          done++;
+        } catch (e) { failed.push(`${f.name}: ${e.message}`); }
+      }
+      status.textContent = '';
+      await loadPhotos();
+      if (failed.length) toast(failed[0] + (failed.length > 1 ? ` (+${failed.length - 1} more)` : ''), true);
+      else toast(`${done} photo${done === 1 ? '' : 's'} added`);
+    }
+
+    const picker = h('input', { type: 'file', accept: 'image/*', multiple: true, onchange: (e) => { const fs = [...e.target.files]; e.target.value = ''; uploadFiles(fs); } });
+    const drop = h('div', { class: 'dropzone' }, 'Drop photos here, or choose files: ', picker);
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); uploadFiles([...e.dataTransfer.files]); });
+    const sizeSel = h('select', { style: 'width:auto', onchange: (e) => { maxDim = Number(e.target.value); try { localStorage.setItem('pidash.photoMax', String(maxDim)); } catch { /* ignore */ } } },
+      MAXES.map(([v, l]) => h('option', { value: v, selected: String(maxDim) === v }, l)));
+    loadPhotos();
+
+    const sub = (t) => h('h3', { style: 'font-size:14px;margin:16px 0 4px' }, t);
+    const panel = h('div', { class: 'panel' }, h('h2', {}, 'Background'),
+      h('p', { class: 'muted small' }, 'What is behind your widgets: a gradient, or a slideshow of your own photos. The gradient colors come from the theme unless you set your own below.'),
+      F('background', 'Show', 'select', { options: [{ value: 'gradient', label: 'Gradient' }, { value: 'photos', label: 'Photo slideshow' }], rerender: true }),
+      sub('Gradient'),
+      preview,
+      F('gradientStyle', 'Style', 'select', { options: [{ value: 'linear', label: 'Linear (angled)' }, { value: 'radial', label: 'Radial (glow from the middle)' }, { value: 'solid', label: 'Solid color' }] }),
+      F('gradientAngle', 'Angle (linear)', 'range', { min: 0, max: 360, step: 5, unit: '\u00B0', default: 135 }),
+      h('div', { class: 'row', style: 'align-items:flex-start;gap:24px' },
+        F('bg1', 'Color A', 'color', { fallback: tv['--bg1'] }),
+        F('bg2', 'Color B', 'color', { fallback: tv['--bg2'] })),
+      sub('Photo slideshow'),
+      warn,
+      F('photoSeconds', 'Seconds per photo', 'number', { placeholder: '60' }),
+      F('photoOrder', 'Order', 'select', { options: [{ value: 'random', label: 'Shuffled' }, { value: 'name', label: 'By file name' }] }),
+      F('photoFit', 'Fit', 'select', { options: [{ value: 'cover', label: 'Fill the screen (crops the edges)' }, { value: 'contain', label: 'Show the whole photo (gradient fills the bars)' }] }),
+      F('photoDim', 'Dim the photos', 'range', { min: 0, max: 90, step: 5, unit: '%', default: 45, resettable: true, help: 'Darkens the photo (lightens it on light themes) so widget text stays readable.' }),
+      F('photoBlur', 'Blur', 'range', { min: 0, max: 30, step: 1, unit: ' px', default: 0 }),
+      F('photoFade', 'Cross-fade time', 'range', { min: 0, max: 10, step: 0.5, unit: ' s', default: 2 }),
+      sub('Your photos'),
+      h('p', { class: 'muted small' }, 'Uploads and deletes happen immediately (no need to Save). Photos are stored on the PiDash server. Large photos are shrunk in your browser before uploading, which keeps the Pi fast.'),
+      h('div', { class: 'row', style: 'margin-bottom:8px' }, h('span', { class: 'small' }, 'Shrink photos to:'), sizeSel, count),
+      drop, status, gallery);
+    panel.addEventListener('input', paint);
+    panel.addEventListener('change', paint);
+    return panel;
+  }
+
   function viewDisplay() {
     const d = cfg.display;
     const F = (key, label, type, extra = {}) => field({ key, label, type, ...extra }, d);
     const fonts = Object.entries(window.PIDASH_FONTS).map(([value, f]) => ({ value, label: f.label }));
     return [
       h('div', { class: 'panel' }, h('h2', {}, 'Theme'),
-        h('p', { class: 'muted small' }, 'Pick a look. Everything below customizes it.'),
-        themeGrid(d, 'theme', false),
+        h('p', { class: 'muted small' }, 'Pick a look, or let PiDash choose: shuffle through your themes, or follow the seasons and holidays automatically. Everything below customizes it.'),
+        F('themeMode', 'Theme mode', 'select', { rerender: true, options: [{ value: 'fixed', label: 'Fixed - always the theme I pick' }, { value: 'random', label: 'Random - shuffle my themes' }, { value: 'seasonal', label: 'Seasonal - follows the calendar and holidays' }] }),
+        themeModeControls(d, F),
         F('accent', 'Accent color (highlights, today, dots)', 'color', { help: 'Overrides the theme accent.' }),
-        h('div', { class: 'row', style: 'align-items:flex-start;gap:24px' },
-          F('bg1', 'Background color A', 'color', { fallback: '#0b1220' }),
-          F('bg2', 'Background color B', 'color', { fallback: '#1b2440' })),
         F('cardStyle', 'Card style', 'select', { options: [{ value: 'glass', label: 'Glass (translucent blur)' }, { value: 'solid', label: 'Solid' }, { value: 'flat', label: 'Outline only' }] }),
         F('font', 'Font', 'select', { options: fonts }),
         F('fontScale', 'Text size (%)', 'number', { placeholder: '100', help: '80-150. Use this to fit your screen or TV.' })),
+      backgroundPanel(d, F),
       h('div', { class: 'panel' }, h('h2', {}, 'Layout'),
         h('p', { class: 'muted small' }, 'How the screen is arranged. "Always visible" widgets (set on the Widgets tab) go in the bar or sidebar; the rest rotate. On portrait screens the side-by-side layouts become a top bar automatically.'),
         layoutGrid(d),
@@ -240,9 +401,7 @@
         F('timeFormat', 'Clock', 'select', { options: [{ value: '12h', label: '12-hour' }, { value: '24h', label: '24-hour' }] }),
         F('units', 'Units', 'select', { options: [{ value: 'imperial', label: 'Imperial (°F, mph)' }, { value: 'metric', label: 'Metric (°C, km/h)' }] }),
         F('locale', 'Locale (optional)', 'text', { placeholder: 'en-US', help: 'Controls date/day names. Blank = browser default.' }),
-        F('rotation', 'Screen rotation (degrees)', 'select', { options: [0, 90, 180, 270].map((v) => ({ value: v, label: `${v}°` })), help: 'For portrait-mounted screens.' }),
-        F('background', 'Background', 'select', { options: [{ value: 'gradient', label: 'Gradient' }, { value: 'photos', label: 'Photo slideshow' }], help: 'Photos: put images in <data dir>/backgrounds on the Pi (JPG/PNG/WebP).' }),
-        F('photoSeconds', 'Seconds per photo', 'number')),
+        F('rotation', 'Screen rotation (degrees)', 'select', { options: [0, 90, 180, 270].map((v) => ({ value: v, label: `${v}°` })), help: 'For portrait-mounted screens.' })),
     ].filter(Boolean);
   }
 

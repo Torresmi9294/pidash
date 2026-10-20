@@ -47,6 +47,27 @@ function maskConfig(cfg) {
   return out;
 }
 
+// Clamp/validate the theme-mode, gradient and photo-slideshow settings (the form is trusted, not the network).
+function sanitizeDisplay(d) {
+  const oneOf = (v, list, dflt) => (list.includes(v) ? v : dflt);
+  const num = (v, lo, hi, dflt) => (v === '' || v == null || !Number.isFinite(Number(v)) ? dflt : Math.min(hi, Math.max(lo, Number(v))));
+  d.themeMode = oneOf(d.themeMode, ['fixed', 'random', 'seasonal'], 'fixed');
+  d.randomEvery = oneOf(d.randomEvery, ['load', 'hour', 'day'], 'day');
+  d.randomSeasonal = d.randomSeasonal === true;
+  d.seasonHemisphere = oneOf(d.seasonHemisphere, ['north', 'south'], 'north');
+  d.seasonHolidays = d.seasonHolidays !== false;
+  d.randomPool = (Array.isArray(d.randomPool) ? d.randomPool : []).map((k) => String(k)).filter((k, i, a) => k.length <= 30 && /^[a-z0-9]+$/i.test(k) && a.indexOf(k) === i).slice(0, 40);
+  d.gradientStyle = oneOf(d.gradientStyle, ['linear', 'radial', 'solid'], 'linear');
+  d.gradientAngle = num(d.gradientAngle, 0, 360, 135);
+  d.photoOrder = oneOf(d.photoOrder, ['random', 'name'], 'random');
+  d.photoDim = d.photoDim === '' || d.photoDim == null ? '' : num(d.photoDim, 0, 90, 45);
+  d.photoBlur = num(d.photoBlur, 0, 30, 0);
+  d.photoFit = oneOf(d.photoFit, ['cover', 'contain'], 'cover');
+  d.photoFade = num(d.photoFade, 0, 10, 2);
+  d.photoSeconds = num(d.photoSeconds, 5, 3600, 60);
+  return d;
+}
+
 // Rotating-grid panes: keep only well-formed entries.
 function sanitizePanes(list) {
   return (Array.isArray(list) ? list : []).slice(0, 100)
@@ -63,6 +84,7 @@ function sanitizePanes(list) {
 function unmaskInto(incoming, existing) {
   const next = config.merge(existing, { display: incoming.display || {} });
   if (incoming.display && 'gridPanes' in incoming.display) next.display.gridPanes = sanitizePanes(incoming.display.gridPanes);
+  sanitizeDisplay(next.display);
   if (incoming.google) {
     const g = incoming.google;
     next.google.clientId = String(g.clientId || '').trim();
@@ -210,9 +232,9 @@ function createApp() {
     } catch {
       /* none */
     }
-    res.json(files.map((f) => `/backgrounds/${encodeURIComponent(f)}`));
+    res.json(files.sort((a, b) => a.localeCompare(b)).map((f) => `/backgrounds/${encodeURIComponent(f)}`));
   });
-  app.use('/backgrounds', express.static(BG_DIR, { maxAge: '1h' }));
+  app.use('/backgrounds', express.static(BG_DIR, { maxAge: '1h', setHeaders: (res) => res.set('X-Content-Type-Options', 'nosniff') }));
 
   // Google redirects the browser here when it can reach the Pi at "localhost".
   app.get('/api/google/callback', async (req, res) => {
@@ -314,6 +336,56 @@ function createApp() {
     health.clear();
     widgets.clearCache();
     res.json({ people: [] });
+  });
+
+  // Background photos (slideshow). The browser downsizes big photos before uploading; the server still checks type and size.
+  const BG_MAX_BYTES = 30 * 1024 * 1024;
+  const BG_MAX_FILES = 300;
+  const sniffImage = (b) => {
+    if (b.length > 12 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') return 'png';
+    if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpg';
+    if (b.length > 6 && b.toString('latin1', 0, 3) === 'GIF') return 'gif';
+    if (b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'webp';
+    if (b.length > 12 && b.toString('latin1', 4, 12) === 'ftypavif') return 'avif';
+    return ''; // SVG and everything else is refused (SVG can carry scripts)
+  };
+  const listBackgrounds = () => {
+    let files = [];
+    try {
+      files = fs.readdirSync(BG_DIR).filter((f) => IMAGE_RE.test(f));
+    } catch {
+      /* no folder yet */
+    }
+    return files.sort((a, b) => a.localeCompare(b)).map((name) => {
+      const st = fs.statSync(path.join(BG_DIR, name));
+      return { name, url: `/backgrounds/${encodeURIComponent(name)}`, size: st.size, added: st.mtimeMs };
+    });
+  };
+  admin.get('/backgrounds', (req, res) => res.json(listBackgrounds()));
+  admin.post('/backgrounds', express.raw({ type: () => true, limit: BG_MAX_BYTES }), (req, res) => {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'No image received.' });
+    const ext = sniffImage(buf);
+    if (!ext) return res.status(415).json({ error: 'That file is not a JPG, PNG, GIF, WebP or AVIF image.' });
+    if (listBackgrounds().length >= BG_MAX_FILES) return res.status(400).json({ error: `Limit of ${BG_MAX_FILES} photos reached. Delete some first.` });
+    const base = String(req.query.name || 'photo').replace(/\.[A-Za-z0-9]{1,5}$/, '').replace(/[^A-Za-z0-9 _-]/g, '').trim().slice(0, 60) || 'photo';
+    fs.mkdirSync(BG_DIR, { recursive: true });
+    let name = `${base}.${ext}`;
+    for (let n = 2; fs.existsSync(path.join(BG_DIR, name)); n++) name = `${base}-${n}.${ext}`;
+    fs.writeFileSync(path.join(BG_DIR, name), buf);
+    broadcast();
+    res.json({ name, url: `/backgrounds/${encodeURIComponent(name)}`, size: buf.length });
+  });
+  admin.delete('/backgrounds/:name', (req, res) => {
+    const name = req.params.name;
+    if (path.basename(name) !== name || !IMAGE_RE.test(name)) return res.status(400).json({ error: 'Bad file name.' });
+    try {
+      fs.unlinkSync(path.join(BG_DIR, name));
+    } catch {
+      return res.status(404).json({ error: 'No such photo.' });
+    }
+    broadcast();
+    res.json({ deleted: name });
   });
 
   admin.get('/new-id/:type', (req, res) => res.json({ id: config.newId(req.params.type.replace(/[^a-z0-9-]/gi, '')) }));

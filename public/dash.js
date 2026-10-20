@@ -206,7 +206,13 @@
     try { list = await getJson('/api/backgrounds'); } catch { /* none */ }
     if (!list.length) return;
     const layers = [...document.querySelectorAll('.bg-layer')];
-    let idx = Math.floor(Math.random() * list.length);
+    if (display.photoOrder !== 'name') {
+      for (let k = list.length - 1; k > 0; k--) { // shuffle (Fisher-Yates)
+        const j = Math.floor(Math.random() * (k + 1));
+        [list[k], list[j]] = [list[j], list[k]];
+      }
+    } // else: the server already sends them sorted by name
+    let idx = 0;
     let front = 0;
     const swap = () => {
       const img = new Image();
@@ -226,15 +232,16 @@
 
   function initNightMode() {
     const el = document.getElementById('night');
-    if (!display.nightMode && !display.nightTheme) return;
-    let themeShown = display.theme;
+    // The ticker also re-evaluates a random (hourly/daily) or seasonal theme as time passes, without a reload.
+    if (!display.nightMode && !display.nightTheme && (display.themeMode || 'fixed') === 'fixed') return;
+    let themeShown = PIDASH_RESOLVE_THEME(display);
     const tick = () => {
       const hr = new Date().getHours();
       const s = Number(display.nightStart);
       const e = Number(display.nightEnd);
       const night = s > e ? hr >= s || hr < e : hr >= s && hr < e;
       if (display.nightMode) el.style.opacity = night ? String(1 - Math.min(Math.max(Number(display.nightDim), 0), 1)) : '0';
-      const want = night && display.nightTheme ? display.nightTheme : display.theme;
+      const want = night && display.nightTheme ? display.nightTheme : PIDASH_RESOLVE_THEME(display);
       if (want !== themeShown) {
         themeShown = want;
         PIDASH_APPLY_THEME(display, { theme: want });
@@ -269,7 +276,7 @@
     }
     rev = cfg.rev;
     display = cfg.display;
-    PIDASH_APPLY_THEME(display);
+    PIDASH_APPLY_THEME(display, { theme: PIDASH_RESOLVE_THEME(display) }); // fixed, random or seasonal
     PIDASH_APPLY_LAYOUT(display);
     PidashFit.setMode(display.contentFit);
     document.title = display.title || 'PiDash';

@@ -35,13 +35,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#root { position: fixed; inset: 0; overflow: hidden; background: linear-gradient(135deg, var(--bg1), var(--bg2)); }
+#root { position: fixed; inset: 0; overflow: hidden; background: var(--grad, linear-gradient(135deg, var(--bg1), var(--bg2))); }
 #root.rot90 { width: 100vh; height: 100vw; top: 0; left: 100vw; transform-origin: 0 0; transform: rotate(90deg); inset: auto; }
 #root.rot270 { width: 100vh; height: 100vw; top: 100vh; left: 0; transform-origin: 0 0; transform: rotate(-90deg); inset: auto; }
 #root.rot180 { transform: rotate(180deg); }
 
-#bg { position: absolute; inset: 0; }
-.bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 2s ease; }
+#bg { position: absolute; inset: 0; overflow: hidden; }
+.bg-layer { position: absolute; inset: calc(-1 * var(--photo-blur, 0px)); background-size: var(--photo-fit, cover); background-position: center; background-repeat: no-repeat; opacity: 0; transition: opacity var(--photo-fade, 2s) ease; filter: blur(var(--photo-blur, 0px)); }
 .bg-layer.on { opacity: 1; }
 #root.photos #bg::after { content: ''; position: absolute; inset: 0; background: var(--overlay); }
 

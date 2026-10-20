@@ -63,3 +63,14 @@ code { background:var(--bg); padding:1px 5px; border-radius:5px; font-size:13px;
 .lay-ico.grid-rotate i { background:var(--accent); opacity:.55; }
 .lay-ico.grid-rotate i.wide { grid-column:span 2; opacity:.8; position:relative; }
 .lay-ico.grid-rotate i.wide::after { content:'BB'; position:absolute; right:5px; top:0; font-size:10px; line-height:14px; color:#fff; font-style:normal; }
+
+.tile-group { font-weight:600; font-size:13px; margin:6px 0 0; color:var(--muted); }
+.bg-preview { height:70px; border-radius:10px; border:1px solid var(--line); margin:8px 0 10px; }
+.dropzone { border:2px dashed var(--line); border-radius:12px; padding:16px; text-align:center; }
+.dropzone.over { border-color:var(--accent); background:var(--bg); }
+.photos { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin-top:10px; }
+.photo { position:relative; border:1px solid var(--line); border-radius:10px; padding:6px; background:var(--bg); }
+.photo img { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:6px; display:block; background:var(--line); }
+.photo .pn { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:4px; }
+.photo button { position:absolute; top:10px; right:10px; }
+input[type=range] { width:100%; accent-color:var(--accent); }

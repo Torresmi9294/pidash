@@ -11,7 +11,9 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Verse of the Day**: Bible Gateway's daily verse in NIV/ESV/NKJV/NLT and more, a curated daily list in public-domain translations, or your own list of verses
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
 - **Plugin widgets**: drop a folder in and it appears in the admin. See [docs/WRITING_WIDGETS.md](docs/WRITING_WIDGETS.md)
-- **11 themes** (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) with custom accent and background colors, card styles, fonts, text size, and an automatic night theme
+- **22 themes**: 11 classic (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) and 11 seasonal/holiday ones (Autumn, Winter, Spring, Summer, Halloween, Christmas, Valentine's, St. Patrick's, 4th of July, Thanksgiving, New Year), with custom accent and background colors, card styles, fonts, text size, and an automatic night theme
+- **Theme modes**: fixed, **random** (a new theme every load/hour/day, from all or just your chosen themes), or **seasonal** (follows the seasons and holidays automatically)
+- **Backgrounds**: gradient (linear/radial/solid, any angle) or a photo slideshow with photos **uploaded from the admin page** (dimming, blur, fit, cross-fade)
 - **Content fit**: every widget scales to its cell so nothing is cut off, shrinking in small cells and growing to fill big ones (or choose shrink-only / off)
 - **7 layouts** (sidebar left/right, top bar, bottom bar, grid with everything on screen at once, **rotating grid** where you choose what each pane cycles through, focus), plus sidebar width, spacing, corner roundness and rotation transition (fade/slide/zoom)
 - Photo-slideshow background, portrait rotation, night dimming, live reload when you save
@@ -122,38 +124,9 @@ Every highlight is an option in the admin, so you decide what stands out:
 - **Pinned items**: star reminders (Admin → Reminders), list keywords to highlight in the Calendar (e.g. `birthday, flight`), and pin extra ESPN team IDs such as a rival.
 - **Sports video highlights**: add the *Sports Highlights* widget. Tick *Play the video clips* to play them muted on the display (best on a Pi 4/5 or PC; otherwise it shows thumbnails and headlines). Both Sports Highlights and the News slideshow have **Show the timer** and **Show the dots** checkboxes if you'd rather have a clean slide with no progress bar or dots. It uses ESPN's public, unofficial feeds for personal use.
 
-### Photo background
+### Backgrounds and photos
 
-Set Display → Background to *Photo slideshow* and copy JPG/PNG/WebP files into `/var/lib/pidash/data/backgrounds/` (Docker: see [docs/DOCKER.md](docs/DOCKER.md)).
+Open **Admin → Display → Background**. Choose *Gradient* (linear with any angle, radial, or solid; colors come from the theme or your own) or *Photo slideshow*. To add photos, drop them on the upload box or choose files: they are stored on the server (in the data folder, so Docker keeps them) and shown as a gallery you can delete from. Big phone photos are shrunk in your browser to 1920 px first (changeable), which keeps the Pi fast and the upload small. You can also tune the slideshow: seconds per photo, shuffled or by name, fill vs. show-whole-photo, dimming (so text stays readable), blur and cross-fade time. JPG, PNG, WebP, GIF and AVIF work; HEIC (iPhone) photos need to be exported as JPG first.
 
-## Security
+Behind a reverse proxy, uploads can fail with "too big" if the proxy limits request size. Raise it (Nginx / Nginx Proxy Manager: `client_max_body_size 30m`). With the default 1920 px shrinking most photos are well under 1 MB anyway.
 
-- The display is read-only and shows no secrets. API keys and OAuth tokens are stored in `config.json` (mode 600, owned by the `pidash` user) and never sent back to the browser.
-- **Set an admin password** in Admin → Security (HTTP Basic auth, any username). Without one, anyone on your LAN can open the admin page. The password is sent in the clear over HTTP, so keep PiDash on a trusted network and don't expose it to the internet. If you must, put it behind a reverse proxy with HTTPS or a VPN such as Tailscale.
-
-## Troubleshooting
-
-| Symptom | Try |
-|---|---|
-| Black screen after reboot (cage) | `journalctl -u pidash-kiosk -b`. Then try `sudo ./scripts/install.sh --kiosk x11`. |
-| A fantasy team shows initials instead of its logo | PiDash fetches and caches logos itself. Initials mean ESPN has no logo for that team or it could not be downloaded. See the reason with `journalctl -u pidash \| grep logos` (Docker: `docker compose logs pidash \| grep logos`). Cached copies live in `<data dir>/cache/logos` and refresh weekly. |
-| Page loads but icons are boxes | `sudo apt install fonts-noto-color-emoji` and reboot. |
-| Wrong "today" / event times | Set the time zone: `sudo raspi-config` → Localisation → Timezone. |
-| Server problems | `journalctl -u pidash -f` |
-| Chromium needs a different scale on a TV | Set `KIOSK_EXTRA_FLAGS=--force-device-scale-factor=1.5` in `/etc/pidash/pidash.env` and reboot. |
-| Different port | `sudo ./scripts/install.sh --port 80` |
-| Screen turns off | Pi OS Desktop: *Preferences → Screen Blanking → off*. Cage/x11 modes already disable blanking. |
-
-## Development
-
-```bash
-npm ci
-npm test            # node:test suite (API, secret masking, auth, ICS recurrence...)
-npm run dev         # auto-restart server; data in ./data
-```
-
-Layout: `server/` (Express API, config, Google OAuth), `widgets/<name>/{server.js,client.js}` (built-in widgets), `public/` (display + admin UI, no build step), `scripts/` (installer, kiosk launcher), `examples/` (a sample plugin widget).
-
-## License
-
-MIT
