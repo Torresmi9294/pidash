@@ -39,6 +39,7 @@ test('layout settings map to CSS variables, with safe fallbacks for unknown valu
   assert.equal(style.get('--radius'), '0.25rem');
   assert.equal(root.dataset.transition, 'slide');
   assert.equal(root.dataset.dots, 'off');
+  assert.equal(root.dataset.titles, 'upper');
 
   win.PIDASH_APPLY_LAYOUT({ sidebarSize: 'bogus', spacing: '', corners: undefined, transition: 'spin' });
   assert.equal(style.get('--side'), '27%');
@@ -46,6 +47,8 @@ test('layout settings map to CSS variables, with safe fallbacks for unknown valu
   assert.equal(style.get('--radius'), '1.1rem');
   assert.equal(root.dataset.transition, 'fade');
   assert.equal(root.dataset.dots, 'on');
+  win.PIDASH_APPLY_LAYOUT({ titleCase: 'normal' });
+  assert.equal(root.dataset.titles, 'normal');
 });
 
 test('new layout settings have defaults and persist through the admin API', async () => {

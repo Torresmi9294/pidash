@@ -132,7 +132,12 @@
     }
     const def = registry[w.type];
     const body = h('div', { class: 'card-body' });
-    const card = h('section', { class: `card card-${w.type} ${mode === 'tile' ? `tile ${slot === 'sidebar' ? 'sidebar' : ''}` : mode === 'pane' ? `rotate ${slot === 'sidebar' ? 'sidebar' : ''}` : slot}` }, def.chrome === false ? null : h('h2', { class: 'card-title' }, def.title || w.name), body);
+    // Title bar: the widget's custom title if set, else its default (some widgets, like the clock, have none by default).
+    const custom = String((w.options && w.options.title) || '').trim();
+    const hideTitle = !!(w.options && w.options.hideTitle);
+    const titleText = hideTitle ? '' : custom || (def.chrome === false ? '' : def.title || w.name);
+    const titleEl = titleText ? h('h2', { class: 'card-title' }, titleText) : null;
+    const card = h('section', { class: `card card-${w.type} ${mode === 'tile' ? `tile ${slot === 'sidebar' ? 'sidebar' : ''}` : mode === 'pane' ? `rotate ${slot === 'sidebar' ? 'sidebar' : ''}` : slot}` }, titleEl, body);
     const c = { w, def, card, body, loaded: false, ctx: { id: w.id, options: w.options || {}, display, slot, fmt: makeFmt(display), h } };
     allCards.push(c);
     // Called once the card is attached to the page (widgets such as the clock check el.isConnected).

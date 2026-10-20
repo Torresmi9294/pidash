@@ -76,6 +76,10 @@ function unmaskInto(incoming, existing) {
       if (!widgets.types.has(w.type)) throw new Error(`Unknown widget type "${w.type}"`);
       const prev = old.get(w.id);
       const options = { ...(w.options || {}) };
+      // Generic options every widget has: a custom card title and a switch to hide the title bar.
+      if ('title' in options) options.title = String(options.title || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      if (!options.title) delete options.title;
+      if ('hideTitle' in options) options.hideTitle = options.hideTitle === true;
       for (const key of widgets.secretKeys(w.type)) {
         if (options[key] === config.SECRET_MASK) options[key] = prev && prev.options ? prev.options[key] || '' : '';
       }

@@ -325,3 +325,6 @@ body {
 .sh-host { display: flex; flex-direction: column; }
 .sh-host .sh { flex: 1; min-height: calc(8 * var(--u)); }
 .sh-noimg { background: linear-gradient(135deg, var(--accent-soft), rgba(0, 0, 0, 0.35)); }
+
+/* Widget titles: CAPITALS by default, or exactly as typed */
+[data-titles='normal'] .card-title { text-transform: none; letter-spacing: 0.02em; font-size: calc(1.05 * var(--u)); font-weight: 600; }

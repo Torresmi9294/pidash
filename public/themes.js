@@ -69,6 +69,7 @@ window.PIDASH_APPLY_LAYOUT = function applyLayoutSettings(display) {
   root.style.setProperty('--radius', RADIUS[display.corners] || RADIUS.normal);
   root.dataset.transition = ['fade', 'slide', 'zoom', 'none'].includes(display.transition) ? display.transition : 'fade';
   root.dataset.dots = display.dots === false ? 'off' : 'on';
+  root.dataset.titles = display.titleCase === 'normal' ? 'normal' : 'upper';
 };
 
 // Panes for the "Rotating grid" layout. Sizes are columns x rows in the grid.

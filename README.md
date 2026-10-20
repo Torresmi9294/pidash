@@ -79,7 +79,7 @@ npm ci && npm start          # http://localhost:8080  (needs Node 18+)
 
 ## Setting up widgets
 
-Open **/admin/**, choose a widget, set its options, press **Save & apply**. The display reloads by itself. Each widget can be **Always visible** (side panel) or **Rotating** (main panel), with its own on-screen time, and you can reorder or add several of the same type, e.g. two ESPN leagues.
+Open **/admin/**, choose a widget, set its options, press **Save & apply**. The display reloads by itself. Each widget can be **Always visible** (side panel) or **Rotating** (main panel), with its own on-screen time, and you can reorder or add several of the same type, e.g. two ESPN leagues. Every widget can also be **renamed** (e.g. "Family Calendar", "Brian's League") or have its title bar hidden, and you can show titles in capitals or exactly as typed (Display → Layout).
 
 ### Calendar
 
