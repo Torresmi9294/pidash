@@ -29,6 +29,10 @@ exports.meta = {
       key: 'content', label: 'Show', type: 'select',
       options: [{ value: 'both', label: 'Video clips and stories' }, { value: 'videos', label: 'Video clips only' }, { value: 'stories', label: 'Stories only' }],
     },
+    {
+      key: 'order', label: 'Order', type: 'select',
+      options: [{ value: 'newest', label: 'In order (newest first)' }, { value: 'random', label: 'Random (shuffled; everything plays once before any repeats)' }],
+    },
     { key: 'playVideo', label: 'Play the video clips (muted). Needs a Pi 4/5 or a PC; off = show thumbnails only', type: 'checkbox' },
     { key: 'itemSeconds', label: 'Seconds per item (thumbnails)', type: 'number', placeholder: '12' },
     { key: 'showTimer', label: 'Show the timer (progress bar under the slide)', type: 'checkbox', default: true },

@@ -12,23 +12,52 @@ Dash.register('sports-highlights', {
       return !Number.isFinite(m) ? '' : m < 60 ? `${Math.max(m, 1)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
     };
 
-    let i = Math.min(el._hlIndex || 0, d.items.length - 1);
+    // Order: as the feed gives it, or shuffled. A shuffle plays every item once, then reshuffles (never starting the next
+    // round with the item that just played). The shuffled order survives the periodic data refresh.
+    const random = options.order === 'random' && d.items.length > 1;
+    const shuffle = (list, avoidFirst) => {
+      const a = list.slice();
+      for (let k = a.length - 1; k > 0; k--) {
+        const j = Math.floor(Math.random() * (k + 1));
+        [a[k], a[j]] = [a[j], a[k]];
+      }
+      if (avoidFirst != null && a.length > 1 && a[0].id === avoidFirst) {
+        const j = 1 + Math.floor(Math.random() * (a.length - 1));
+        [a[0], a[j]] = [a[j], a[0]];
+      }
+      return a;
+    };
+    let items = d.items;
+    if (random) {
+      const byId = new Map(d.items.map((x) => [x.id, x]));
+      const kept = (el._hlOrder || []).filter((id) => byId.has(id)).map((id) => byId.get(id));
+      items = kept.concat(shuffle(d.items.filter((x) => !kept.includes(x))));
+      el._hlOrder = items.map((x) => x.id);
+    } else {
+      el._hlOrder = null;
+    }
+
+    let i = Math.min(el._hlIndex || 0, items.length - 1);
     let elapsed = 0;
     let video = null;
     const stage = h('div', { class: `sh ${slot}` });
     const bar = h('div', { class: 'sh-progress' }, h('i'));
-    const dots = h('div', { class: 'sh-dots' }, d.items.map(() => h('i')));
+    const dots = h('div', { class: 'sh-dots' }, items.map(() => h('i')));
     el.replaceChildren(stage, bar, dots);
     // Optional: hide the timer (progress bar) and/or the dots. The slides still rotate; the picture grows into the space.
     if (options.showTimer === false) bar.style.display = 'none';
     if (options.showDots === false) dots.style.display = 'none';
 
     function show(n) {
-      i = (n + d.items.length) % d.items.length;
+      if (random && n >= items.length) { // the round is over: shuffle again
+        items = shuffle(items, items[items.length - 1].id);
+        el._hlOrder = items.map((x) => x.id);
+      }
+      i = (n + items.length) % items.length;
       el._hlIndex = i;
       elapsed = 0;
       video = null;
-      const it = d.items[i];
+      const it = items[i];
       const media = [];
       if (it.image) media.push(h('img', { class: 'sh-img', src: it.image, alt: '', referrerpolicy: 'no-referrer' }));
       if (play && it.video) {
