@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test test/app.test.js test/health.test.js test/verse.test.js test/highlights.test.js test/logos.test.js test/rss.test.js test/layouts.test.js test/titles.test.js test/slideoptions.test.js test/themes.test.js test/backgrounds.test.js test/contentfit.test.js test/scoreboard.test.js test/updater.test.js test/update-helper.test.js test/fantasy-rosters.test.js test/autoscroll.test.js test/highlights-order.test.js"
+    "test": "node --test test/app.test.js test/health.test.js test/verse.test.js test/highlights.test.js test/logos.test.js test/rss.test.js test/layouts.test.js test/titles.test.js test/slideoptions.test.js test/themes.test.js test/backgrounds.test.js test/contentfit.test.js test/scoreboard.test.js test/updater.test.js test/update-helper.test.js test/fantasy-rosters.test.js test/autoscroll.test.js test/highlights-order.test.js test/rss-order.test.js"
   },
   "dependencies": {
     "express": "^4.21.2",

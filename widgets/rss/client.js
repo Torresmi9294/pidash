@@ -56,9 +56,34 @@ function listView(el, d, { h, options, slot }) {
 }
 
 // ---- featured stories slideshow: one big story at a time, like Sports Highlights ----------------
+// Fisher-Yates shuffle; if `avoid` is given, the result does not start with that story.
+function rssShuffle(list, avoid) {
+  const a = list.slice();
+  for (let k = a.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [a[k], a[j]] = [a[j], a[k]];
+  }
+  if (avoid != null && a.length > 1 && a[0].title === avoid) {
+    const j = 1 + Math.floor(Math.random() * (a.length - 1));
+    [a[0], a[j]] = [a[j], a[0]];
+  }
+  return a;
+}
+
 function slideshow(el, d, { h, options, slot }) {
   const withImages = d.items.filter((i) => i.image);
-  const items = options.showThumbnails !== false && withImages.length ? withImages : d.items; // prefer stories that have a picture
+  let items = options.showThumbnails !== false && withImages.length ? withImages : d.items; // prefer stories that have a picture
+  // Order: as the feed gives it, or shuffled. A shuffle plays every story once, then reshuffles (never starting the next
+  // round with the story that just played). The shuffled order survives the periodic data refresh. Titles are unique here.
+  const random = options.order === 'random' && items.length > 1;
+  if (random) {
+    const byTitle = new Map(items.map((x) => [x.title, x]));
+    const kept = (el._rssOrder || []).filter((t) => byTitle.has(t)).map((t) => byTitle.get(t));
+    items = kept.concat(rssShuffle(items.filter((x) => !kept.includes(x))));
+    el._rssOrder = items.map((x) => x.title);
+  } else {
+    el._rssOrder = null;
+  }
   const perItem = Math.max(5, Number(options.itemSeconds) || 12);
   let i = Math.min(el._rssIndex || 0, items.length - 1);
   let elapsed = 0;
@@ -73,6 +98,10 @@ function slideshow(el, d, { h, options, slot }) {
   if (options.showDots === false) dots.style.display = 'none';
 
   function show(n) {
+    if (random && n >= items.length) { // the round is over: shuffle again
+      items = rssShuffle(items, items[items.length - 1].title);
+      el._rssOrder = items.map((x) => x.title);
+    }
     i = (n + items.length) % items.length;
     el._rssIndex = i;
     elapsed = 0;

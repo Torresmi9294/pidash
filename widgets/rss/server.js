@@ -12,16 +12,20 @@ exports.meta = {
     { key: 'maxItems', label: 'Max headlines', type: 'number', placeholder: '8' },
     { key: 'showThumbnails', label: 'Show thumbnails (when the feed has images)', type: 'checkbox', default: true },
     {
-      key: 'layout', label: 'Layout', type: 'select',
+      key: 'layout', label: 'Layout', type: 'select', rerender: true,
       options: [
         { value: 'list', label: 'List' },
         { value: 'featured', label: 'Featured top story + list' },
         { value: 'slideshow', label: 'Featured stories slideshow (one big story at a time, rotating)' },
       ],
     },
-    { key: 'itemSeconds', label: 'Seconds per story (slideshow)', type: 'number', placeholder: '12' },
-    { key: 'showTimer', label: 'Show the timer (progress bar) - slideshow only', type: 'checkbox', default: true },
-    { key: 'showDots', label: 'Show the dots (one per story) - slideshow only', type: 'checkbox', default: true },
+    {
+      key: 'order', label: 'Order', type: 'select', showIf: { key: 'layout', value: 'slideshow' },
+      options: [{ value: 'newest', label: 'In order (newest first)' }, { value: 'random', label: 'Random (shuffled; every story plays once before any repeats)' }],
+    },
+    { key: 'itemSeconds', label: 'Seconds per story (slideshow)', type: 'number', placeholder: '12', showIf: { key: 'layout', value: 'slideshow' } },
+    { key: 'showTimer', label: 'Show the timer (progress bar) - slideshow only', type: 'checkbox', default: true, showIf: { key: 'layout', value: 'slideshow' } },
+    { key: 'showDots', label: 'Show the dots (one per story) - slideshow only', type: 'checkbox', default: true, showIf: { key: 'layout', value: 'slideshow' } },
     { key: 'showSummary', label: 'Show a short summary under each headline', type: 'checkbox' },
   ],
 };
