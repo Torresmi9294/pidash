@@ -239,7 +239,7 @@ body {
 .fm-cell.r { justify-content: flex-end; }
 
 /* ---- health ---- */
-.health { display: flex; flex-direction: column; gap: calc(1 * var(--u)); height: 100%; }
+.health { display: flex; flex-direction: column; gap: calc(0.7 * var(--u)); height: 100%; }
 .rings { display: flex; justify-content: space-around; gap: calc(1 * var(--u)); }
 .ring { --size: calc(8.4 * var(--u)); width: var(--size); height: var(--size); border-radius: 50%; display: grid; place-items: center;
   background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(127, 127, 127, 0.22) 0); }
@@ -264,7 +264,7 @@ body {
 .vq { font-family: Georgia, 'Noto Serif', serif; font-size: calc(7 * var(--u)); line-height: 0.6; height: calc(3 * var(--u)); color: var(--accent); opacity: 0.35; }
 .vt { font-family: Georgia, 'Noto Serif', 'DejaVu Serif', serif; line-height: 1.4; font-style: italic; max-width: calc(60 * var(--u)); }
 .v-s .vt { font-size: calc(3 * var(--u)); } .v-m .vt { font-size: calc(2.5 * var(--u)); } .v-l .vt { font-size: calc(2 * var(--u)); } .v-xl .vt { font-size: calc(1.6 * var(--u)); }
-.vr { margin-top: calc(1.4 * var(--u)); font-size: calc(1.4 * var(--u)); font-weight: 600; color: var(--accent); letter-spacing: 0.04em; }
+.vr { margin-top: calc(0.9 * var(--u)); font-size: calc(1.4 * var(--u)); font-weight: 600; color: var(--accent); letter-spacing: 0.04em; }
 .vv { color: var(--muted); font-weight: 400; font-size: calc(1 * var(--u)); }
 .vc { margin-top: calc(0.8 * var(--u)); font-size: calc(0.7 * var(--u)); max-width: calc(40 * var(--u)); }
 .verse.sidebar { padding: 0 calc(0.5 * var(--u)); }

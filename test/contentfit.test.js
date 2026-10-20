@@ -142,3 +142,29 @@ test('saving: the per-widget setting is validated and survives a round trip thro
     server.close();
   }
 });
+
+test('fit: optional extras are dropped first, even when one is the only list item left', () => {
+  const Fit = loadFit();
+  const st = { s: 1 };
+  const attrs = {};
+  const extra = {
+    style: { display: '' }, scrollHeight: 0, clientHeight: 0, scrollWidth: 0, clientWidth: 0, children: [],
+    hasAttribute: (k) => k === 'data-fit-silent' || k === 'data-fit-item' || (k === 'data-fit-hidden' && extra.hidden),
+    setAttribute(k) { if (k === 'data-fit-hidden') extra.hidden = true; },
+    removeAttribute(k) { if (k === 'data-fit-hidden') extra.hidden = false; },
+    closest: () => null,
+  };
+  Object.defineProperty(extra.style, 'display', { get: () => (extra.hidden ? 'none' : ''), set: () => {} });
+  extra.style.removeProperty = () => { extra.hidden = false; };
+  const sel = (q) => (q === '[data-fit-item]' || q === '*' ? [extra] : q === '[data-fit-hidden]' ? (extra.hidden ? [extra] : []) : []);
+  const b = {
+    isConnected: true, clientHeight: 50, clientWidth: 400, scrollWidth: 100, dataset: {}, children: [],
+    get scrollHeight() { return Math.round((40 + (extra.hidden ? 0 : 60)) * st.s); },
+    style: { setProperty: (_k, v) => { st.s = parseFloat(/\*\s*([\d.]+)\)/.exec(v)[1]); }, removeProperty: () => { st.s = 1; } },
+    querySelectorAll: sel, removeAttribute: (k) => { delete attrs[k]; }, setAttribute: (k, v) => { attrs[k] = v; }, hasAttribute: () => false,
+  };
+  const s = Fit.card(b, { mode: 'fill' });
+  assert.equal(extra.hidden, true, 'the optional extra was hidden');
+  assert.ok(s > 1.1, `the rest grew back up instead of shrinking to fit the extra (scale ${s})`);
+  assert.equal(attrs['data-fit-trim'], undefined, 'quietly: no "+N more" note for optional extras');
+});

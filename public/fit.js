@@ -99,12 +99,17 @@
       if (!bad) break;
       const items = [...bad.querySelectorAll('[data-fit-item]')].filter(visible);
       const total = [...body.querySelectorAll('[data-fit-item]')].filter(visible).length;
-      if (!items.length || total <= 1) break;
-      const last = items[items.length - 1];
+      if (!items.length) break;
+      // Optional extras (forecast, chart, bench...) go first and quietly - even if one is all that is left.
+      // Real list entries come next, from the end, always keeping at least one.
+      const silent = (x) => !!(x.hasAttribute && x.hasAttribute('data-fit-silent'));
+      const extras = items.filter(silent);
+      if (!extras.length && total <= 1) break;
+      const last = extras.length ? extras[extras.length - 1] : items[items.length - 1];
       hideItem(last);
       steps++;
-      if (!(last.hasAttribute && last.hasAttribute('data-fit-silent'))) hidden++; // optional extras (forecast, chart...) are dropped quietly
-      const group = items[items.length - 1].closest('[data-fit-group]');
+      if (!silent(last)) hidden++;
+      const group = last.closest('[data-fit-group]');
       if (group && ![...group.querySelectorAll('[data-fit-item]')].some(visible)) hideItem(group);
     }
     if (hidden) body.setAttribute('data-fit-trim', String(hidden));
