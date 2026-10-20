@@ -6,6 +6,8 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Weather** from Open-Meteo (no key) or OpenWeatherMap (your key)
 - **Reminders** managed from the admin page
 - **ESPN Fantasy** league standings and matchups with team logos (football, baseball, basketball, hockey)
+- **Fantasy Roster** your team's lineup: starters, bench and injured reserve with player photos, injury tags (Q / D / OUT / IR), weekly and projected points. Pick a team, or leave it blank to rotate through every team in the league
+- **Fantasy Matchup Rosters** this week's head-to-head with both lineups matched up position by position (QB vs QB, RB vs RB...), live scores, projections and the higher score at each spot highlighted. Shows your matchup, or rotates through every matchup in the league
 - **News** from any RSS/Atom feeds, with thumbnails when the feed includes images, a featured top story + list, a rotating one-story-at-a-time slideshow, and short summaries
 - **Live Scoreboard**: live scores, upcoming games and finals for NFL, NBA, MLB, NHL, college football and basketball, WNBA, MLS and the big soccer leagues, with team logos, records, rankings, game clock, football down-and-distance/possession and baseball count. Mark your teams to star them and put them first, or show only their games. Uses ESPN's free public scoreboard feed (no account, key or subscription)
 - **Sports Highlights**: ESPN headlines and video clips for NFL, NBA, MLB, NHL, college, WNBA, MLS or Premier League, with optional muted clip playback
@@ -102,7 +104,10 @@ The calendar widget has an agenda list and a month grid view.
 
 Works out of the box with **Open-Meteo** (no key). Enter a city. To use **OpenWeatherMap**, switch the provider and paste your API key. Units (°F/°C) come from Admin → Display.
 
-### ESPN Fantasy
+### ESPN Fantasy (league, roster and matchup widgets)
+
+There are three ESPN widgets: **ESPN Fantasy** (standings + scores), **Fantasy Roster** and **Fantasy Matchup Rosters**. Each has its own copy of the league settings below, so you can point them at different leagues. Football is the primary target; baseball, basketball and hockey rosters use ESPN's position codes on a best-effort basis.
+
 
 Enter your league ID (the `leagueId=` number in your league URL) and sport. For **private leagues** you also need two cookies from a browser signed in to fantasy.espn.com: open DevTools → Application/Storage → Cookies → `espn.com`, and copy `SWID` and `espn_s2`. Both are stored on the Pi only and hidden in the admin once saved. This uses ESPN's unofficial API, which can change without notice.
 
