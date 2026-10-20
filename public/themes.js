@@ -72,12 +72,18 @@ window.PIDASH_APPLY_LAYOUT = function applyLayoutSettings(display) {
   root.dataset.titles = display.titleCase === 'normal' ? 'normal' : 'upper';
 };
 
-// Panes for the "Rotating grid" layout. Sizes are columns x rows in the grid.
+// Panes for the "Rotating grid" layout. Sizes are columns x rows of the grid; the grid itself works in half-cells,
+// so a pane can be half a cell wide and/or half a cell tall.
 window.PIDASH_PANE_SIZES = {
+  q: { label: '\u00BD \u00D7 \u00BD (small)', cols: 0.5, rows: 0.5 },
+  hw: { label: '\u00BD \u00D7 1 (narrow)', cols: 0.5, rows: 1 },
+  hh: { label: '1 \u00D7 \u00BD (short)', cols: 1, rows: 0.5 },
   s: { label: '1 \u00D7 1', cols: 1, rows: 1 },
   w: { label: '2 \u00D7 1 (wide)', cols: 2, rows: 1 },
   t: { label: '1 \u00D7 2 (tall)', cols: 1, rows: 2 },
   l: { label: '2 \u00D7 2 (large)', cols: 2, rows: 2 },
+  xw: { label: '2 \u00D7 \u00BD (wide strip)', cols: 2, rows: 0.5 },
+  xt: { label: '\u00BD \u00D7 2 (tall strip)', cols: 0.5, rows: 2 },
 };
 
 // Starting point when no panes are configured: every "always visible" widget gets its own pane and

@@ -84,7 +84,13 @@ test('suggested panes: each always-visible widget alone, rotating widgets share 
   assert.equal(panes[2].size, 'w'); // wide when there are two other panes
   assert.equal(win.PIDASH_SUGGEST_PANES(widgets.slice(2, 4))[0].size, 'l'); // no sidebar widgets: one large pane
   assert.deepEqual(win.PIDASH_SUGGEST_PANES([]), []);
-  assert.deepEqual(Object.keys(win.PIDASH_PANE_SIZES), ['s', 'w', 't', 'l']);
+  assert.deepEqual(Object.keys(win.PIDASH_PANE_SIZES), ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt']);
+  // widths/heights are whole or half cells (the grid runs on half-cell tracks)
+  for (const [k, sz] of Object.entries(win.PIDASH_PANE_SIZES)) {
+    assert.ok(Number.isInteger(sz.cols * 2) && Number.isInteger(sz.rows * 2) && sz.cols > 0 && sz.rows > 0, `${k} must be a multiple of half a cell`);
+  }
+  assert.deepEqual([win.PIDASH_PANE_SIZES.hw.cols, win.PIDASH_PANE_SIZES.hw.rows], [0.5, 1]);  // half wide, full height
+  assert.deepEqual([win.PIDASH_PANE_SIZES.hh.cols, win.PIDASH_PANE_SIZES.hh.rows], [1, 0.5]);  // full wide, half height
 });
 
 test('grid panes are validated and sanitized when saved', async () => {
@@ -109,7 +115,7 @@ test('grid panes are validated and sanitized when saved', async () => {
     assert.equal(panes.length, 12);
     assert.deepEqual(panes[1], { widgets: ['calendar-1', 'reminders-1', '42'], size: 's', seconds: '' });
     assert.deepEqual(panes[2], { widgets: ['weather-1'], size: 'l', seconds: 30 });
-    assert.ok(panes.every((p) => p.widgets.length && ['s', 'w', 't', 'l'].includes(p.size)));
+    assert.ok(panes.every((p) => p.widgets.length && ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt'].includes(p.size)));
     // saving other settings without touching panes keeps them
     const again = await j('/api/admin/config');
     again.display.title = 'Hello';
@@ -129,11 +135,11 @@ function loadFit() {
 }
 
 // A fake widget body whose content height scales with --u, like real text does.
-function fakeBody({ natural, client, items = 0, itemHeight = 40, quirk = false }) {
+function fakeBody({ natural, client, items = 0, itemHeight = 40, quirk = false, silent = 0 }) {
   const state = { s: 1 };
-  const list = Array.from({ length: items }, () => {
-    const attrs = new Set();
-    return { style: { display: '', removeProperty() { this.display = ''; } }, setAttribute: (k) => attrs.add(k), removeAttribute: (k) => attrs.delete(k), closest: () => null, querySelectorAll: () => [], attrs };
+  const list = Array.from({ length: items }, (_, n) => {
+    const attrs = new Set(n >= items - silent ? ['data-fit-silent'] : []); // the LAST `silent` items are optional extras
+    return { style: { display: '', removeProperty() { this.display = ''; } }, setAttribute: (k) => attrs.add(k), removeAttribute: (k) => attrs.delete(k), hasAttribute: (k) => attrs.has(k), closest: () => null, querySelectorAll: () => [], attrs };
   });
   const visible = () => list.filter((i) => i.style.display !== 'none').length;
   // one stable element (like a real DOM node): a frame that is always 2px clipped, whatever the scale
@@ -291,4 +297,51 @@ test('news hero keeps its headline in the frame by construction', () => {
   assert.ok(!/position:\s*absolute/.test(rule('.rss-hero-text')), 'headline must be in normal flow so the hero grows to hold it');
   assert.match(rule('.rss-hero'), /min-height:\s*min-content/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'widgets', 'rss', 'client.js'), 'utf8'), /'data-fit-bounds': true/);
+});
+
+test('half-size panes are accepted and kept when saved (and unknown sizes still fall back to 1x1)', async () => {
+  const { createApp } = require('../server/app');
+  const server = createApp().listen(0);
+  await new Promise((r) => server.once('listening', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const j = (p, o = {}) => fetch(base + p, { ...o, headers: { 'content-type': 'application/json' }, body: o.body && JSON.stringify(o.body) }).then((r) => r.json());
+    const cfg = await j('/api/admin/config');
+    cfg.display.gridPanes = ['q', 'hw', 'hh', 'xw', 'xt', 'half', '0.5'].map((size, i) => ({ widgets: [`w${i}`], size }));
+    await j('/api/admin/config', { method: 'PUT', body: cfg });
+    const sizes = (await j('/api/display')).display.gridPanes.map((p) => p.size);
+    assert.deepEqual(sizes, ['q', 'hw', 'hh', 'xw', 'xt', 's', 's']);
+  } finally {
+    server.close();
+  }
+});
+
+test('rotating grid CSS uses half-cell tracks and per-pane spans', () => {
+  const css = pub('dash.css');
+  assert.match(css, /#layout\[data-layout='grid-rotate'\][^}]*repeat\(calc\(var\(--cols, 2\) \* 2\)/);
+  assert.match(css, /\.pane \{ grid-column: span var\(--cs, 2\); grid-row: span var\(--rs, 2\); \}/);
+  assert.ok(!/\.pane\.span-/.test(css), 'old whole-cell span classes are gone');
+});
+
+test('fit: optional extras marked silent are dropped without a "+N more" note; real entries still get one', () => {
+  const Fit = loadFit();
+  Fit.setMode('fill');
+  // 10 rows x 40px in a 100px cell. All 10 are silent extras (like forecast / chart): nothing is announced.
+  let b = fakeBody({ natural: 0, client: 100, items: 10, silent: 10 });
+  Fit.card(b);
+  assert.ok(b.querySelectorAll('[data-fit-item]').some((i) => i.style.display === 'none'), 'extras were hidden');
+  assert.equal(b.attrs['data-fit-trim'], undefined, 'no note for silent extras');
+  // the last 6 are silent extras, the first 4 are real entries: only hidden real entries are counted
+  b = fakeBody({ natural: 0, client: 100, items: 10, silent: 6 });
+  Fit.card(b);
+  const list = b.querySelectorAll('[data-fit-item]');
+  const hiddenReal = list.slice(0, 4).filter((i) => i.style.display === 'none').length;
+  assert.equal(b.attrs['data-fit-trim'], hiddenReal > 0 ? String(hiddenReal) : undefined);
+});
+
+test('health and weather mark their optional parts so small panes drop them quietly', () => {
+  const src = (w) => fs.readFileSync(path.join(__dirname, '..', 'widgets', w, 'client.js'), 'utf8');
+  assert.match(src('health'), /class: 'bars', 'data-fit-item': true, 'data-fit-silent': true/);
+  assert.match(src('health'), /class: 'hstat', 'data-fit-item': true, 'data-fit-silent': true/);
+  assert.match(src('weather'), /class: 'wx-days', 'data-fit-item': true, 'data-fit-silent': true/);
 });

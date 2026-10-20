@@ -191,7 +191,7 @@
     };
 
     return h('div', { class: 'panel' }, h('h2', {}, 'Rotating Grid Panes'),
-      h('p', { class: 'muted small' }, 'Each pane is one cell of the grid. A pane with several widgets rotates through them in the order shown (use the arrows); with one widget it stays put. Wide/tall/large panes take more room, which suits the calendar. A widget can appear in more than one pane. A widget\'s own "Seconds on screen" setting overrides the pane timing.'),
+      h('p', { class: 'muted small' }, 'Each pane is one cell of the grid. A pane with several widgets rotates through them in the order shown (use the arrows); with one widget it stays put. Pane sizes are measured in grid cells, from ½ × ½ (small) up to 2 × 2 (large): a clock, verse or health pane often needs only half a cell (narrow ½ × 1 or short 1 × ½), while the calendar suits wide, tall or large. A widget can appear in more than one pane. A widget\'s own "Seconds on screen" setting overrides the pane timing.'),
       panes.length ? panes.map(paneCard) : h('p', { class: 'muted' }, 'No panes yet, so PiDash uses a suggested arrangement: each always-visible widget gets its own pane, and all the rotating widgets share one. Start from it and adjust:'),
       h('div', { class: 'row', style: 'margin-top:10px' },
         h('button', { class: 'btn primary', onclick: () => { panes.push({ widgets: [], size: 's', seconds: '' }); touch(); render(); } }, 'Add pane'),

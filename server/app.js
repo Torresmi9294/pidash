@@ -52,7 +52,7 @@ function sanitizePanes(list) {
   return (Array.isArray(list) ? list : []).slice(0, 100)
     .map((p) => ({
       widgets: (Array.isArray(p && p.widgets) ? p.widgets : []).map(String).slice(0, 20),
-      size: ['s', 'w', 't', 'l'].includes(p && p.size) ? p.size : 's',
+      size: ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt'].includes(p && p.size) ? p.size : 's',
       seconds: Number(p && p.seconds) >= 5 ? Math.min(Number(p.seconds), 3600) : '',
     }))
     .filter((p) => p.widgets.length)

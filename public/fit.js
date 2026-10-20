@@ -89,20 +89,23 @@
 
   // Hide trailing items inside whichever element is clipping until nothing is clipped (keeps at least one).
   function trim(body, ignore) {
-    let hidden = 0;
+    let hidden = 0;   // list entries hidden (these get a "+N more" note)
+    let steps = 0;
     for (let i = 0; i < 80; i++) {
       const bad = firstClipped(body, ignore);
       if (!bad) break;
       const items = [...bad.querySelectorAll('[data-fit-item]')].filter(visible);
       const total = [...body.querySelectorAll('[data-fit-item]')].filter(visible).length;
       if (!items.length || total <= 1) break;
-      hideItem(items[items.length - 1]);
-      hidden++;
+      const last = items[items.length - 1];
+      hideItem(last);
+      steps++;
+      if (!(last.hasAttribute && last.hasAttribute('data-fit-silent'))) hidden++; // optional extras (forecast, chart...) are dropped quietly
       const group = items[items.length - 1].closest('[data-fit-group]');
       if (group && ![...group.querySelectorAll('[data-fit-item]')].some(visible)) hideItem(group);
     }
     if (hidden) body.setAttribute('data-fit-trim', String(hidden));
-    return hidden;
+    return steps;
   }
 
   // Elements that are STILL clipped at the smallest size with only one list item showing: shrinking can't
@@ -133,7 +136,9 @@
     let r = search(set, bad, top, floor);
     if (!r.ok) {
       trim(body, ignore);               // drop whole trailing items rather than cutting text mid-line
-      r = bad() ? search(set, bad, floor, MIN) : { s: floor, ok: true };
+      // With the extras gone there is usually room again: shrink further if still needed, else GROW back up
+      // as far as the trimmed content allows (so a short pane gets big text, not minimum-size text).
+      r = bad() ? search(set, bad, floor, MIN) : search(set, bad, top, floor);
     }
     if (!r.ok) {
       // Still clipped at the smallest size: if some element clips at EVERY scale it is a quirk, not too much
@@ -144,7 +149,7 @@
         r = search(set, bad, top, floor);
         if (!r.ok) {
           trim(body, ignore);
-          r = bad() ? search(set, bad, floor, MIN) : { s: floor, ok: true };
+          r = bad() ? search(set, bad, floor, MIN) : search(set, bad, top, floor);
         }
       }
     }

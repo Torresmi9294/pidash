@@ -30,9 +30,9 @@
               `Feels ${cur.feelsLike}° · ${cur.humidity}% · ${cur.wind} ${u.wind}`),
           )),
         hi && d.alerts && d.alerts.length
-          ? h('div', { class: 'wx-alerts' }, d.alerts.slice(0, slot === 'sidebar' ? 2 : 3).map((a) => h('span', { class: `wx-alert ${a.level}` }, `${a.icon} ${a.text}`)))
+          ? h('div', { class: 'wx-alerts', 'data-fit-item': true, 'data-fit-silent': true }, d.alerts.slice(0, slot === 'sidebar' ? 2 : 3).map((a) => h('span', { class: `wx-alert ${a.level}` }, `${a.icon} ${a.text}`)))
           : null,
-        h('div', { class: 'wx-days' }, days),
+        h('div', { class: 'wx-days', 'data-fit-item': true, 'data-fit-silent': true }, days),
       );
     },
   });

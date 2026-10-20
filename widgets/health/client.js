@@ -15,7 +15,7 @@ Dash.register('health', {
     if (m.activeCalories != null) rings.push(ring(m.activeCalories, d.goals.calories, 'move kcal', '#ff5c7a', num(m.activeCalories)));
     if (m.exerciseMinutes != null) rings.push(ring(m.exerciseMinutes, d.goals.exercise, 'exercise min', 'var(--good)', num(m.exerciseMinutes)));
 
-    const stat = (icon, value, label) => (value == null ? null : h('div', { class: 'hstat' }, h('div', { class: 'hv' }, `${icon} ${value}`), h('div', { class: 'hl' }, label)));
+    const stat = (icon, value, label) => (value == null ? null : h('div', { class: 'hstat', 'data-fit-item': true, 'data-fit-silent': true }, h('div', { class: 'hv' }, `${icon} ${value}`), h('div', { class: 'hl' }, label)));
     const sleep = m.sleepHours == null ? null : `${Math.floor(m.sleepHours)}h ${String(Math.round((m.sleepHours % 1) * 60)).padStart(2, '0')}m`;
     const stats = [
       stat('❤️', m.heartRate != null ? `${Math.round(m.heartRate)} bpm` : null, 'heart rate'),
@@ -53,9 +53,9 @@ Dash.register('health', {
     el.replaceChildren(
       h('div', { class: `health ${slot}` },
         h('div', { class: 'rings' }, rings),
-        chips.length && slot !== 'sidebar' ? h('div', { class: 'hchips' }, chips) : null,
+        chips.length && slot !== 'sidebar' ? h('div', { class: 'hchips', 'data-fit-item': true, 'data-fit-silent': true }, chips) : null,
         slot === 'sidebar' ? null : h('div', { class: 'hstats' }, stats),
-        slot === 'sidebar' ? null : h('div', { class: 'bars' }, bars),
+        slot === 'sidebar' ? null : h('div', { class: 'bars', 'data-fit-item': true, 'data-fit-silent': true }, bars),
         h('div', { class: 'hnote muted' }, note)));
   },
 });

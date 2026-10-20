@@ -193,6 +193,8 @@
       if (portrait) cols = Math.min(cols, 2);
       layoutEl.style.setProperty('--cols', String(cols));
       layoutEl.dataset.cols = String(cols);
+      // panes can't be wider than the grid: clamp their column span (in half-cells) to what exists
+      layoutEl.querySelectorAll('.pane').forEach((p) => p.style.setProperty('--cs', String(Math.min(Number(p.dataset.cs) || 2, cols * 2))));
       document.documentElement.style.setProperty('--gscale', gridCount >= 7 ? '0.72' : gridCount >= 5 ? '0.82' : gridCount >= 3 ? '0.92' : '1');
     }
     document.documentElement.dataset.lay = name;
@@ -300,7 +302,10 @@
       applyLayout();
       if (!panes.length) layoutEl.append(h('div', { class: 'msg' }, 'No panes configured. Open /admin on this device (Display > Layout) to set up the grid.'));
       for (const p of panes) {
-        const paneEl = h('div', { class: `pane span-${PIDASH_PANE_SIZES[p.size] ? p.size : 's'}` });
+        const sz = PIDASH_PANE_SIZES[p.size] || PIDASH_PANE_SIZES.s;
+        const paneEl = h('div', { class: 'pane', 'data-cs': Math.round(sz.cols * 2), 'data-rs': Math.round(sz.rows * 2) });
+        paneEl.style.setProperty('--cs', String(Math.round(sz.cols * 2)));
+        paneEl.style.setProperty('--rs', String(Math.round(sz.rows * 2)));
         layoutEl.append(paneEl);
         const slides = [];
         for (const w of p.list) {
@@ -317,6 +322,7 @@
           slides[0].card.classList.add('active');
         }
       }
+      applyLayout(); // now that the panes exist, clamp their widths to the number of columns
       document.getElementById('dots').replaceChildren();
       initBackground();
       initNightMode();
