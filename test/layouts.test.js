@@ -84,13 +84,15 @@ test('suggested panes: each always-visible widget alone, rotating widgets share 
   assert.equal(panes[2].size, 'w'); // wide when there are two other panes
   assert.equal(win.PIDASH_SUGGEST_PANES(widgets.slice(2, 4))[0].size, 'l'); // no sidebar widgets: one large pane
   assert.deepEqual(win.PIDASH_SUGGEST_PANES([]), []);
-  assert.deepEqual(Object.keys(win.PIDASH_PANE_SIZES), ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt']);
+  assert.deepEqual(Object.keys(win.PIDASH_PANE_SIZES), ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt', 'w3', 't3']);
   // widths/heights are whole or half cells (the grid runs on half-cell tracks)
   for (const [k, sz] of Object.entries(win.PIDASH_PANE_SIZES)) {
     assert.ok(Number.isInteger(sz.cols * 2) && Number.isInteger(sz.rows * 2) && sz.cols > 0 && sz.rows > 0, `${k} must be a multiple of half a cell`);
   }
   assert.deepEqual([win.PIDASH_PANE_SIZES.hw.cols, win.PIDASH_PANE_SIZES.hw.rows], [0.5, 1]);  // half wide, full height
   assert.deepEqual([win.PIDASH_PANE_SIZES.hh.cols, win.PIDASH_PANE_SIZES.hh.rows], [1, 0.5]);  // full wide, half height
+  assert.deepEqual([win.PIDASH_PANE_SIZES.w3.cols, win.PIDASH_PANE_SIZES.w3.rows], [3, 1]);    // three cells wide
+  assert.deepEqual([win.PIDASH_PANE_SIZES.t3.cols, win.PIDASH_PANE_SIZES.t3.rows], [1, 3]);    // three cells tall
 });
 
 test('grid panes are validated and sanitized when saved', async () => {
@@ -115,7 +117,7 @@ test('grid panes are validated and sanitized when saved', async () => {
     assert.equal(panes.length, 12);
     assert.deepEqual(panes[1], { widgets: ['calendar-1', 'reminders-1', '42'], size: 's', seconds: '' });
     assert.deepEqual(panes[2], { widgets: ['weather-1'], size: 'l', seconds: 30 });
-    assert.ok(panes.every((p) => p.widgets.length && ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt'].includes(p.size)));
+    assert.ok(panes.every((p) => p.widgets.length && ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt', 'w3', 't3'].includes(p.size)));
     // saving other settings without touching panes keeps them
     const again = await j('/api/admin/config');
     again.display.title = 'Hello';

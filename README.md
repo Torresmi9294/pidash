@@ -121,7 +121,7 @@ Apple Health and Android Health Connect keep data on the phone and offer no clou
 
 ### Rotating grid
 
-Pick **Admin → Display → Layout → Rotating grid**, then build your panes: each pane is one cell of the grid. Tick the widgets a pane should cycle through (reorder them with the arrows), choose its size (from half a cell, ½×½, ½×1 or 1×½, up to wide, tall and 2×2 large, so a clock or verse doesn't waste a whole cell) and how long each widget stays. A pane with one widget simply stays put. Start from the suggested arrangement (each always-visible widget alone, rotating widgets together in one wide pane) and adjust from there.
+Pick **Admin → Display → Layout → Rotating grid**, then build your panes: each pane is one cell of the grid. Tick the widgets a pane should cycle through (reorder them with the arrows), choose its size (from half a cell, ½×½, ½×1 or 1×½, up to wide, tall, 2×2 large, and 3×1 / 1×3 for long strips, so a clock or verse doesn't waste a whole cell) and how long each widget stays. A pane with one widget simply stays put. Start from the suggested arrangement (each always-visible widget alone, rotating widgets together in one wide pane) and adjust from there.
 
 ### Live Scoreboard
 
