@@ -72,7 +72,7 @@ set_status running "Downloading ${SHA:0:7}"
 curl -fsSL --max-time 300 -o "$WORK/src.tar.gz" "https://codeload.github.com/$REPO/tar.gz/$SHA" || fail "Download failed."
 mkdir "$WORK/src"
 tar -xzf "$WORK/src.tar.gz" -C "$WORK/src" --strip-components=1 || fail "The download was not a valid archive."
-[ -f "$WORK/src/package.json" ] && [ -f "$WORK/src/server/index.js" ] || fail "The download does not look like PiDash."
+if [ ! -f "$WORK/src/package.json" ] || [ ! -f "$WORK/src/server/index.js" ]; then fail "The download does not look like PiDash."; fi
 
 set_status running "Preparing ${SHA:0:7}"
 NEW="$APP_DIR.new"
@@ -107,7 +107,7 @@ if healthy; then
   rm -rf "$APP_DIR.old"
   # Keep the root-owned helper itself current (rename is atomic, so this running copy is not disturbed).
   if ! cmp -s "$APP_DIR/scripts/update.sh" "$HELPER_DST"; then
-    install -m 755 "$APP_DIR/scripts/update.sh" "$HELPER_DST.new" && mv -f "$HELPER_DST.new" "$HELPER_DST" || true
+    if install -m 755 "$APP_DIR/scripts/update.sh" "$HELPER_DST.new"; then mv -f "$HELPER_DST.new" "$HELPER_DST" || true; fi
   fi
   set_status "done" "Updated to ${SHA:0:7}"
   exit 0
