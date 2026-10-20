@@ -13,6 +13,11 @@ exports.meta = {
   fields: [
     ...fantasy.CONNECTION_FIELDS,
     { key: 'show', label: 'Show', type: 'select', options: [{ value: 'both', label: 'Matchups + standings' }, { value: 'matchups', label: 'Matchups only' }, { value: 'standings', label: 'Standings only' }] },
+    {
+      key: 'arrange', label: 'Layout', type: 'select',
+      options: [{ value: 'side', label: 'Side by side (matchups left, standings right)' }, { value: 'stacked', label: 'Stacked (matchups on top, standings below)' }],
+      help: 'Stacked suits tall, narrow spaces. It only matters when both matchups and standings are shown.',
+    },
     { key: 'myTeamId', label: 'My team ID (optional)', type: 'number', help: 'Your team is always highlighted and gets its own callout. Find it as teamId= in the URL of your team page.' },
     { key: 'pinnedTeams', label: 'Also pin these team IDs (comma-separated)', type: 'text', placeholder: '3, 7', help: 'Pinned teams are always highlighted - handy for a rival or a friend.' },
     { key: 'showLogos', label: 'Show team logos', type: 'checkbox', default: true },

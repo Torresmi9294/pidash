@@ -49,7 +49,7 @@
             h('div', { 'data-fit-item': true, class: `callout ${mine(c.teamId) ? 'me' : ''}` }, h('span', { class: 'ci' }, c.icon), h('b', {}, `${c.label}: `), c.text)))
         : null;
 
-      el.replaceChildren(h('div', { class: `espn ${showM && showS ? '' : 'single'}` },
+      el.replaceChildren(h('div', { class: `espn ${showM && showS ? (options.arrange === 'stacked' ? 'stacked' : '') : 'single'}` },
         showM ? h('div', { class: 'ecol' }, h('h3', {}, `${d.leagueName} · Week ${d.period}`), matchups, chips) : null,
         showS ? h('div', { class: 'ecol' }, h('h3', {}, 'Standings'), standings) : null));
     },

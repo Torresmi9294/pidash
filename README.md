@@ -106,7 +106,7 @@ Works out of the box with **Open-Meteo** (no key). Enter a city. To use **OpenWe
 
 ### ESPN Fantasy (league, roster and matchup widgets)
 
-There are three ESPN widgets: **ESPN Fantasy** (standings + scores), **Fantasy Roster** and **Fantasy Matchup Rosters**. Each has its own copy of the league settings below, so you can point them at different leagues. Football is the primary target; baseball, basketball and hockey rosters use ESPN's position codes on a best-effort basis.
+There are three ESPN widgets: **ESPN Fantasy** (standings + scores), **Fantasy Roster** and **Fantasy Matchup Rosters**. The league widget can be laid out **side by side** (matchups left, standings right) or **stacked** (matchups on top, standings below, good for tall narrow spaces; Layout setting). Each has its own copy of the league settings below, so you can point them at different leagues. Football is the primary target; baseball, basketball and hockey rosters use ESPN's position codes on a best-effort basis.
 
 
 Enter your league ID (the `leagueId=` number in your league URL) and sport. For **private leagues** you also need two cookies from a browser signed in to fantasy.espn.com: open DevTools → Application/Storage → Cookies → `espn.com`, and copy `SWID` and `espn_s2`. Both are stored on the Pi only and hidden in the admin once saved. This uses ESPN's unofficial API, which can change without notice.

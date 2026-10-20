@@ -169,6 +169,8 @@ body {
 /* ---- espn ---- */
 .espn { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.6 * var(--u)); height: 100%; }
 .espn.single { grid-template-columns: 1fr; }
+.espn.stacked { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; align-content: start; } /* matchups above standings */
+.espn.stacked .ecol + .ecol { margin-top: calc(0.2 * var(--u)); }
 .ecol { min-width: 0; min-height: 0; overflow: hidden; }
 .espn h3 { font-size: calc(0.9 * var(--u)); color: var(--accent); margin-bottom: calc(0.5 * var(--u)); font-weight: 600; }
 .tlogo { width: calc(2 * var(--u)); height: calc(2 * var(--u)); border-radius: 50%; object-fit: contain; flex: none; background: rgba(255, 255, 255, 0.06); }

@@ -118,3 +118,15 @@ test('both widgets are registered with shared connection fields and their client
   const path = require('path');
   for (const t of ['espn-roster', 'espn-matchup']) assert.ok(fs.existsSync(path.join(__dirname, '..', 'widgets', t, 'client.js')));
 });
+
+test('league widget: Layout setting (side by side by default, or stacked)', () => {
+  const league = require('../widgets/espn-fantasy/server');
+  const f = league.meta.fields.find((x) => x.key === 'arrange');
+  assert.deepEqual(f.options.map((o) => o.value), ['side', 'stacked']);
+  const fs = require('fs');
+  const path = require('path');
+  const client = fs.readFileSync(path.join(__dirname, '..', 'widgets', 'espn-fantasy', 'client.js'), 'utf8');
+  assert.match(client, /options\.arrange === 'stacked' \? 'stacked'/);
+  assert.match(client, /showM && showS \?/, 'only applies when both sections are shown');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'dash.css'), 'utf8'), /\.espn\.stacked \{/);
+});
