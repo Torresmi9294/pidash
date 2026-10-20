@@ -7,6 +7,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **Reminders** managed from the admin page
 - **ESPN Fantasy** league standings and matchups with team logos (football, baseball, basketball, hockey)
 - **News** from any RSS/Atom feeds, with thumbnails when the feed includes images, a featured top story + list, a rotating one-story-at-a-time slideshow, and short summaries
+- **Live Scoreboard**: live scores, upcoming games and finals for NFL, NBA, MLB, NHL, college football and basketball, WNBA, MLS and the big soccer leagues, with team logos, records, rankings, game clock, football down-and-distance/possession and baseball count. Mark your teams to star them and put them first, or show only their games. Uses ESPN's free public scoreboard feed (no account, key or subscription)
 - **Sports Highlights**: ESPN headlines and video clips for NFL, NBA, MLB, NHL, college, WNBA, MLS or Premier League, with optional muted clip playback
 - **Verse of the Day**: Bible Gateway's daily verse in NIV/ESV/NKJV/NLT and more, a curated daily list in public-domain translations, or your own list of verses
 - **Health**: steps, activity rings, heart rate, sleep and weight pushed from your phone/watch (Apple Health via Shortcuts or Health Auto Export; Android via any automation app)
@@ -114,6 +115,10 @@ Apple Health and Android Health Connect keep data on the phone and offer no clou
 ### Rotating grid
 
 Pick **Admin → Display → Layout → Rotating grid**, then build your panes: each pane is one cell of the grid. Tick the widgets a pane should cycle through (reorder them with the arrows), choose its size (from half a cell, ½×½, ½×1 or 1×½, up to wide, tall and 2×2 large, so a clock or verse doesn't waste a whole cell) and how long each widget stays. A pane with one widget simply stays put. Start from the suggested arrangement (each always-visible widget alone, rotating widgets together in one wide pane) and adjust from there.
+
+### Live Scoreboard
+
+Add the **Live Scoreboard** widget and pick up to three leagues. *Games to show* can be everything in the feed (the NFL feed is the whole week), today's games, live and upcoming only, or live games only (it then tells you when the next game starts). Put your teams in *My teams* (abbreviations like `NE` or names like `Celtics`) to star and sort them first, or tick *Only show games with my teams*. It refreshes every 30 seconds while any game is live and only every few minutes otherwise, so it stays polite to the free feed. The feed is unofficial and can change or lag a little behind TV.
 
 ### Highlights
 
