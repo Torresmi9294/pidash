@@ -105,13 +105,13 @@ window.PIDASH_PANE_SIZES = {
   hw: { label: '\u00BD \u00D7 1 (narrow)', cols: 0.5, rows: 1 },
   hh: { label: '1 \u00D7 \u00BD (short)', cols: 1, rows: 0.5 },
   s: { label: '1 \u00D7 1', cols: 1, rows: 1 },
-  w: { label: '2 \u00D7 1 (wide)', cols: 2, rows: 1 },
-  t: { label: '1 \u00D7 2 (tall)', cols: 1, rows: 2 },
-  l: { label: '2 \u00D7 2 (large)', cols: 2, rows: 2 },
   xw: { label: '2 \u00D7 \u00BD (wide strip)', cols: 2, rows: 0.5 },
   xt: { label: '\u00BD \u00D7 2 (tall strip)', cols: 0.5, rows: 2 },
+  w: { label: '2 \u00D7 1 (wide)', cols: 2, rows: 1 },
+  t: { label: '1 \u00D7 2 (tall)', cols: 1, rows: 2 },
   w3: { label: '3 \u00D7 1 (extra wide)', cols: 3, rows: 1 },
   t3: { label: '1 \u00D7 3 (extra tall)', cols: 1, rows: 3 },
+  l: { label: '2 \u00D7 2 (large)', cols: 2, rows: 2 },
 };
 
 // Starting point when no panes are configured: every "always visible" widget gets its own pane and

@@ -84,7 +84,7 @@ test('suggested panes: each always-visible widget alone, rotating widgets share 
   assert.equal(panes[2].size, 'w'); // wide when there are two other panes
   assert.equal(win.PIDASH_SUGGEST_PANES(widgets.slice(2, 4))[0].size, 'l'); // no sidebar widgets: one large pane
   assert.deepEqual(win.PIDASH_SUGGEST_PANES([]), []);
-  assert.deepEqual(Object.keys(win.PIDASH_PANE_SIZES), ['q', 'hw', 'hh', 's', 'w', 't', 'l', 'xw', 'xt', 'w3', 't3']);
+  assert.deepEqual(Object.keys(win.PIDASH_PANE_SIZES), ['q', 'hw', 'hh', 's', 'xw', 'xt', 'w', 't', 'w3', 't3', 'l']);
   // widths/heights are whole or half cells (the grid runs on half-cell tracks)
   for (const [k, sz] of Object.entries(win.PIDASH_PANE_SIZES)) {
     assert.ok(Number.isInteger(sz.cols * 2) && Number.isInteger(sz.rows * 2) && sz.cols > 0 && sz.rows > 0, `${k} must be a multiple of half a cell`);
