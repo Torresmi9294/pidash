@@ -347,3 +347,13 @@ test('health and weather mark their optional parts so small panes drop them quie
   assert.match(src('health'), /class: 'hstat', 'data-fit-item': true, 'data-fit-silent': true/);
   assert.match(src('weather'), /class: 'wx-days', 'data-fit-item': true, 'data-fit-silent': true/);
 });
+
+test('admin: rotating grid panes are collapsible like widgets (collapsed by default, new panes open)', () => {
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.js'), 'utf8');
+  assert.match(admin, /const openPanes = new WeakSet\(\)/);
+  assert.match(admin, /const isOpen = openPanes\.has\(p\)/);
+  assert.match(admin, /isOpen \? h\('div', \{ class: 'body' \}, rows\.length/);
+  assert.match(admin, /panes\.push\(np\); openPanes\.add\(np\)/);
+  assert.match(admin, /'Expand all'/);
+  assert.match(admin, /'Collapse all'/);
+});

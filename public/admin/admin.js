@@ -7,6 +7,7 @@
   let tab = location.hash === '#google-connected' ? 'google' : 'widgets';
   let dirty = false;
   const open = new Set();
+  const openPanes = new WeakSet(); // rotating-grid panes that are expanded (panes have no ids, so they are tracked by object)
 
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
@@ -229,6 +230,7 @@
     const swap = (list, i, j) => { if (j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; touch(); render(); };
 
     const paneCard = (p, i) => {
+      const isOpen = openPanes.has(p);
       const sel = p.widgets.filter((id) => enabled.some((w) => w.id === id));
       const rows = [
         ...sel.map((id, k) => {
@@ -243,20 +245,24 @@
       ];
       return h('div', { class: 'wcard' },
         h('div', { class: 'head' },
-          h('div', { class: 'title', style: 'cursor:default' }, `Pane ${i + 1}`, h('small', {}, sel.length > 1 ? `rotates ${sel.length} widgets` : sel.length === 1 ? 'static' : 'empty')),
+          h('div', { class: 'title', onclick: () => { if (isOpen) openPanes.delete(p); else openPanes.add(p); render(); } }, `${isOpen ? '▾' : '▸'} Pane ${i + 1}`,
+            h('small', {}, sel.length ? sel.map((id) => label(enabled.find((x) => x.id === id)).replace(/ \([^)]*\)$/, '')).join(', ') : 'empty', sel.length > 1 ? ` (rotates ${sel.length})` : '')),
           h('select', { style: 'width:auto', title: 'Size in the grid', onchange: (e) => { p.size = e.target.value; touch(); } }, sizeOpts.map(([k, s]) => h('option', { value: k, selected: (p.size || 's') === k }, s.label))),
           h('input', { type: 'number', min: 5, placeholder: `${d.rotateSeconds || 20} s`, title: 'Seconds per widget (blank = default)', value: p.seconds || '', style: 'width:90px', oninput: (e) => { p.seconds = e.target.value === '' ? '' : Number(e.target.value); touch(); } }),
           h('button', { class: 'btn sm', title: 'Move up', onclick: () => swap(panes, i, i - 1) }, '\u2191'),
           h('button', { class: 'btn sm', title: 'Move down', onclick: () => swap(panes, i, i + 1) }, '\u2193'),
           h('button', { class: 'btn sm danger', onclick: () => { panes.splice(i, 1); touch(); render(); } }, 'Remove')),
-        h('div', { class: 'body' }, rows.length ? rows : h('p', { class: 'muted' }, 'Enable some widgets on the Widgets tab first.')));
+        isOpen ? h('div', { class: 'body' }, rows.length ? rows : h('p', { class: 'muted' }, 'Enable some widgets on the Widgets tab first.')) : null);
     };
 
     return h('div', { class: 'panel' }, h('h2', {}, 'Rotating Grid Panes'),
-      h('p', { class: 'muted small' }, 'Each pane is one cell of the grid. A pane with several widgets rotates through them in the order shown (use the arrows); with one widget it stays put. Pane sizes are measured in grid cells, from ½ × ½ (small) up to 2 × 2 (large): a clock, verse or health pane often needs only half a cell (narrow ½ × 1 or short 1 × ½), while the calendar suits wide, tall or large. A widget can appear in more than one pane. A widget\'s own "Seconds on screen" setting overrides the pane timing.'),
+      h('p', { class: 'muted small' }, 'Each pane is one cell of the grid. A pane with several widgets rotates through them in the order shown (use the arrows); with one widget it stays put. Pane sizes are measured in grid cells, from ½ × ½ (small) up to 2 × 2 (large), 3 × 1 and 1 × 3: a clock, verse or health pane often needs only half a cell (narrow ½ × 1 or short 1 × ½), while the calendar suits wide, tall or large. A widget can appear in more than one pane. A widget\'s own "Seconds on screen" setting overrides the pane timing.'),
+      panes.length > 1 ? h('div', { class: 'row', style: 'margin-bottom:8px' },
+        h('button', { class: 'btn sm', onclick: () => { panes.forEach((p) => openPanes.add(p)); render(); } }, 'Expand all'),
+        h('button', { class: 'btn sm', onclick: () => { panes.forEach((p) => openPanes.delete(p)); render(); } }, 'Collapse all')) : null,
       panes.length ? panes.map(paneCard) : h('p', { class: 'muted' }, 'No panes yet, so PiDash uses a suggested arrangement: each always-visible widget gets its own pane, and all the rotating widgets share one. Start from it and adjust:'),
       h('div', { class: 'row', style: 'margin-top:10px' },
-        h('button', { class: 'btn primary', onclick: () => { panes.push({ widgets: [], size: 's', seconds: '' }); touch(); render(); } }, 'Add pane'),
+        h('button', { class: 'btn primary', onclick: () => { const np = { widgets: [], size: 's', seconds: '' }; panes.push(np); openPanes.add(np); touch(); render(); } }, 'Add pane'),
         h('button', { class: 'btn', onclick: () => { d.gridPanes = window.PIDASH_SUGGEST_PANES(cfg.widgets); touch(); render(); } }, panes.length ? 'Reset to suggested' : 'Start from suggested')),
       panes.length && missing.length ? h('p', { class: 'small', style: 'color:var(--bad)' }, `Not shown on the grid: ${missing.map(label).join(', ')}`) : null);
   }
