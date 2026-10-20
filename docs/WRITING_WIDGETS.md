@@ -69,7 +69,7 @@ Dash.register('stocks', {
 
 ## Content fit (sizing)
 
-PiDash scales each widget's contents to its cell so nothing is cut off: down when the cell is small, and up to use spare room (Admin > Display > *Widget content fit*). To take part:
+PiDash scales each widget's contents to its cell so nothing is cut off: down when the cell is small, and up to use spare room (each widget has a *Content fit* setting in the admin: Fill, Shrink only or Off). To take part:
 
 - **Use `calc(N * var(--u))` instead of `rem`** for sizes in CSS (`--u` is 1rem normally; the fitter changes it per widget). A test fails if `dash.css` contains plain `rem`. Percentages, `em`, `px` borders and `vw/vh` are fine.
 - Build lists from repeated items and mark each with `'data-fit-item': true` (and the wrapper of a group of items with `'data-fit-group': true`). If the widget still doesn't fit at a readable size, PiDash hides whole trailing items and shows "+N more" instead of cutting a line in half.

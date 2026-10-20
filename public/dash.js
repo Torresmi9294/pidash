@@ -88,7 +88,14 @@
 
   // ---- content fit (see fit.js) -------------------------------------------------------------
   // def.fit may be false, or a function of the widget's options (e.g. the news slideshow fills itself).
-  const fitEnabled = (c) => !!c.def && (typeof c.def.fit === 'function' ? c.def.fit(c.w.options || {}) !== false : c.def.fit !== false);
+  const fitEnabled = (c) => !!c.def && fitModeOf(c) !== 'off' && (typeof c.def.fit === 'function' ? c.def.fit(c.w.options || {}) !== false : c.def.fit !== false);
+  // Content fit is a per-widget setting (Fill / Shrink only / Off). Old installs had one global setting, so fall back to it.
+  const FIT_MODES = ['fill', 'shrink', 'off'];
+  const fitModeOf = (c) => {
+    const own = c.w.options && c.w.options.contentFit;
+    if (FIT_MODES.includes(own)) return own;
+    return FIT_MODES.includes(display && display.contentFit) ? display.contentFit : 'fill';
+  };
   const inSidebar = (c) => !!c.card.parentElement && c.card.parentElement.id === 'sidebar';
   let fitFrame = 0;
   const fitQueue = new Set();
@@ -101,6 +108,7 @@
     PidashFit.group(cards.map((c) => c.body), side, {
       horizontal: ['top', 'bottom'].includes(layoutEl.dataset.layout),
       layoutEl,
+      mode: cards.some((c) => fitModeOf(c) === 'shrink') ? 'shrink' : 'fill', // the shared scale can't grow if any member is shrink-only
       max: cards.length ? Math.min(...cards.map((c) => c.def.fitMax || 1.6)) : 1.6,
     });
   }
@@ -109,7 +117,7 @@
     if (!c.def) return;
     if (!fitEnabled(c)) { c.body.style.removeProperty('--u'); return; }
     if (inSidebar(c)) fitSidebar();
-    else PidashFit.card(c.body, { max: c.def.fitMax, floor: c.def.fitFloor });
+    else PidashFit.card(c.body, { max: c.def.fitMax, floor: c.def.fitFloor, mode: fitModeOf(c) });
   }
 
   function fitSoon(c) {

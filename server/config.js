@@ -103,6 +103,16 @@ function merge(base, over) {
 function load() {
   const saved = readJson(CONFIG_FILE, null);
   config = merge(DEFAULTS(), saved || {});
+  // Content fit used to be one global setting. It is per widget now: carry an old non-default choice over to every widget.
+  const legacy = config.display.contentFit;
+  if (saved && (legacy === 'shrink' || legacy === 'off')) {
+    for (const w of config.widgets) {
+      w.options = w.options || {};
+      if (!w.options.contentFit) w.options.contentFit = legacy;
+    }
+    config.display.contentFit = 'fill';
+    try { writeJson(CONFIG_FILE, config); } catch (e) { console.error(`[config] could not save migrated settings: ${e.message}`); }
+  }
   if (!saved) {
     try {
       writeJson(CONFIG_FILE, config);

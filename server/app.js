@@ -51,6 +51,7 @@ function maskConfig(cfg) {
 function sanitizeDisplay(d) {
   const oneOf = (v, list, dflt) => (list.includes(v) ? v : dflt);
   const num = (v, lo, hi, dflt) => (v === '' || v == null || !Number.isFinite(Number(v)) ? dflt : Math.min(hi, Math.max(lo, Number(v))));
+  d.contentFit = oneOf(d.contentFit, ['fill', 'shrink', 'off'], 'fill'); // legacy global default; the real setting is per widget now
   d.themeMode = oneOf(d.themeMode, ['fixed', 'random', 'seasonal'], 'fixed');
   d.randomEvery = oneOf(d.randomEvery, ['load', 'hour', 'day'], 'day');
   d.randomSeasonal = d.randomSeasonal === true;
@@ -102,6 +103,7 @@ function unmaskInto(incoming, existing) {
       if ('title' in options) options.title = String(options.title || '').replace(/\s+/g, ' ').trim().slice(0, 60);
       if (!options.title) delete options.title;
       if ('hideTitle' in options) options.hideTitle = options.hideTitle === true;
+      if ('contentFit' in options && !['fill', 'shrink', 'off'].includes(options.contentFit)) delete options.contentFit;
       for (const key of widgets.secretKeys(w.type)) {
         if (options[key] === config.SECRET_MASK) options[key] = prev && prev.options ? prev.options[key] || '' : '';
       }

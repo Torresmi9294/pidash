@@ -118,6 +118,10 @@
         isOpen ? h('div', { class: 'body' },
           field({ key: 'title', label: 'Title shown on this widget', type: 'text', placeholder: t.name, help: 'Rename it however you like, e.g. "Family Calendar" or "Brian\'s League". Blank = the default name.' }, w.options),
           field({ key: 'hideTitle', label: 'Hide the title bar', type: 'checkbox' }, w.options),
+          t.noContentFit ? null : field({ key: 'contentFit', label: 'Content fit', type: 'select', options: [
+            { value: 'fill', label: 'Fill - shrink to fit and grow to use spare room' },
+            { value: 'shrink', label: 'Shrink only - never enlarge' },
+            { value: 'off', label: 'Off - fixed size' }], help: 'How this widget\'s contents are sized to its cell so nothing is cut off.' }, w.options),
           w.slot !== 'sidebar' ? field({ key: 'durationSec', label: 'Seconds on screen (blank = default)', type: 'number', placeholder: String(cfg.display.rotateSeconds) }, w.options) : null,
           t.fields.length ? t.fields.map((f) => field(f, w.options)) : h('p', { class: 'muted' }, 'No settings for this widget.')) : null);
     });
@@ -405,7 +409,6 @@
         F('corners', 'Corners', 'select', { options: [{ value: 'sharp', label: 'Sharp' }, { value: 'normal', label: 'Rounded' }, { value: 'round', label: 'Very round' }] }),
         F('transition', 'Rotation transition', 'select', { options: [{ value: 'fade', label: 'Fade' }, { value: 'slide', label: 'Slide' }, { value: 'zoom', label: 'Zoom' }, { value: 'none', label: 'None (instant)' }] }),
         F('titleCase', 'Widget titles', 'select', { options: [{ value: 'upper', label: 'CAPITALS (default look)' }, { value: 'normal', label: 'As typed (keeps your capitalization)' }], help: 'Rename widgets on the Widgets tab.' }),
-        F('contentFit', 'Widget content fit', 'select', { options: [{ value: 'fill', label: 'Fill - shrink to fit and grow to use spare room' }, { value: 'shrink', label: 'Shrink only - never enlarge' }, { value: 'off', label: 'Off - fixed size' }], help: 'Scales each widget so nothing is cut off in its cell.' }),
         F('dots', 'Show the page dots at the bottom', 'checkbox', { default: true })),
       d.layout === 'grid-rotate' ? paneEditor(d) : null,
       h('div', { class: 'panel' }, h('h2', {}, 'Display'),

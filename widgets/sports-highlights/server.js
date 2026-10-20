@@ -21,6 +21,7 @@ exports.meta = {
   name: 'Sports Highlights',
   description: 'Latest headlines and video clips from ESPN for your leagues.',
   refreshSec: 900,
+  noContentFit: true, // the photo/video fills its cell by itself, so no content-fit setting is offered
   fields: [
     { key: 'league', label: 'League', type: 'select', options: leagueOptions(false) },
     { key: 'league2', label: 'Second league (optional)', type: 'select', options: leagueOptions(true) },

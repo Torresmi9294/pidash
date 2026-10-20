@@ -120,13 +120,15 @@
     return out;
   }
 
-  const ceiling = (opts) => (mode === 'shrink' ? 1 : Math.max(1, (opts && opts.max) || FILL_MAX));
+  // opts.mode (per widget) wins over the global default mode
+  const modeOf = (opts) => (opts && opts.mode) || mode;
+  const ceiling = (opts) => (modeOf(opts) === 'shrink' ? 1 : Math.max(1, (opts && opts.max) || FILL_MAX));
 
   // One widget in its own cell (rotating stage, grid tile, pane).
   function card(body, opts) {
     restore(body);
     const floor = Math.min(Math.max((opts && opts.floor) || READABLE, MIN), 1);
-    if (mode === 'off') { body.style.removeProperty('--u'); delete body.dataset.fit; return 1; }
+    if (modeOf(opts) === 'off') { body.style.removeProperty('--u'); delete body.dataset.fit; return 1; }
     if (!body.isConnected || body.clientHeight <= 0 || body.clientWidth <= 0) return null;
     const set = (v) => apply(body, v);
     const top = Math.max(ceiling(opts), floor);
@@ -161,8 +163,8 @@
   // natural heights add up to what fits: the column must not overflow, a bar must stay under ~1/3 of the screen.
   function group(bodies, container, opts) {
     if (!bodies.length) return null;
-    if (mode === 'off') { bodies.forEach((b) => b.style.removeProperty('--u')); return 1; }
     const o = opts || {};
+    if (modeOf(o) === 'off') { bodies.forEach((b) => b.style.removeProperty('--u')); return 1; }
     let ignore = null;
     const bad = () => {
       if (o.horizontal) {

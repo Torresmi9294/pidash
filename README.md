@@ -14,7 +14,7 @@ A self-hosted smart-display dashboard in the style of DAKboard / MagicMirror for
 - **22 themes**: 11 classic (Midnight, Light, Ocean, Forest, Sunset, Nebula, Rose, Slate, AMOLED, Paper, High contrast) and 11 seasonal/holiday ones (Autumn, Winter, Spring, Summer, Halloween, Christmas, Valentine's, St. Patrick's, 4th of July, Thanksgiving, New Year), with custom accent and background colors, card styles, fonts, text size, and an automatic night theme
 - **Theme modes**: fixed, **random** (a new theme every load/hour/day, from all or just your chosen themes), or **seasonal** (follows the seasons and holidays automatically)
 - **Backgrounds**: gradient (linear/radial/solid, any angle) or a photo slideshow with photos **uploaded from the admin page** (dimming, blur, fit, cross-fade)
-- **Content fit**: every widget scales to its cell so nothing is cut off, shrinking in small cells and growing to fill big ones (or choose shrink-only / off)
+- **Content fit**: every widget scales to its cell so nothing is cut off, shrinking in small cells and growing to fill big ones. It is a per-widget setting (Fill, Shrink only, or Off)
 - **7 layouts** (sidebar left/right, top bar, bottom bar, grid with everything on screen at once, **rotating grid** where you choose what each pane cycles through, focus), plus sidebar width, spacing, corner roundness and rotation transition (fade/slide/zoom)
 - Photo-slideshow background, portrait rotation, night dimming, live reload when you save
 - Runs from Pi Zero up to Pi 5, and on any x86 Linux box or Docker host
