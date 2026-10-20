@@ -56,3 +56,25 @@ test('every widget type can be renamed (the title fields are generic, not per-wi
   assert.match(admin, /key: 'title', label: 'Title shown on this widget'/);
   assert.match(admin, /key: 'hideTitle', label: 'Hide the title bar'/);
 });
+
+test('admin tabs: Themes has its own tab (theme, background, night); Display keeps layout and basics', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.js'), 'utf8');
+  assert.match(src, /const TABS = \{ widgets: 'Widgets', display: 'Display', themes: 'Themes', google:/);
+  assert.match(src, /themes: viewThemes/);
+  const fn = (name) => {
+    const i = src.indexOf(`function ${name}() {`);
+    assert.ok(i > 0, `${name} exists`);
+    const j = src.indexOf('\n  }\n', i);
+    return src.slice(i, j);
+  };
+  const themes = fn('viewThemes');
+  const display = fn('viewDisplay');
+  for (const h of ["'Theme'", "'Night'"]) assert.ok(themes.includes(`h('h2', {}, ${h})`), `Themes tab has ${h}`);
+  assert.ok(themes.includes('backgroundPanel(d, F)'), 'Themes tab has the Background panel');
+  for (const h of ["'Layout'", "'Display'"]) assert.ok(display.includes(`h('h2', {}, ${h})`), `Display tab has ${h}`);
+  assert.ok(display.includes('paneEditor(d)'), 'Rotating Grid Panes stay with the layout');
+  // nothing is duplicated across the two tabs
+  for (const h of ["'Theme'", "'Night'"]) assert.ok(!display.includes(`h('h2', {}, ${h})`), `Display tab no longer has ${h}`);
+  for (const h of ["'Layout'", "'Display'"]) assert.ok(!themes.includes(`h('h2', {}, ${h})`), `Themes tab does not have ${h}`);
+  assert.ok(!display.includes('backgroundPanel'));
+});

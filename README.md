@@ -126,7 +126,7 @@ Every highlight is an option in the admin, so you decide what stands out:
 
 ### Backgrounds and photos
 
-Open **Admin → Display → Background**. Choose *Gradient* (linear with any angle, radial, or solid; colors come from the theme or your own) or *Photo slideshow*. To add photos, drop them on the upload box or choose files: they are stored on the server (in the data folder, so Docker keeps them) and shown as a gallery you can delete from. Big phone photos are shrunk in your browser to 1920 px first (changeable), which keeps the Pi fast and the upload small. You can also tune the slideshow: seconds per photo, shuffled or by name, fill vs. show-whole-photo, dimming (so text stays readable), blur and cross-fade time. JPG, PNG, WebP, GIF and AVIF work; HEIC (iPhone) photos need to be exported as JPG first.
+Open **Admin → Themes → Background**. Choose *Gradient* (linear with any angle, radial, or solid; colors come from the theme or your own) or *Photo slideshow*. To add photos, drop them on the upload box or choose files: they are stored on the server (in the data folder, so Docker keeps them) and shown as a gallery you can delete from. Big phone photos are shrunk in your browser to 1920 px first (changeable), which keeps the Pi fast and the upload small. You can also tune the slideshow: seconds per photo, shuffled or by name, fill vs. show-whole-photo, dimming (so text stays readable), blur and cross-fade time. JPG, PNG, WebP, GIF and AVIF work; HEIC (iPhone) photos need to be exported as JPG first.
 
 Behind a reverse proxy, uploads can fail with "too big" if the proxy limits request size. Raise it (Nginx / Nginx Proxy Manager: `client_max_body_size 30m`). With the default 1920 px shrinking most photos are well under 1 MB anyway.
 

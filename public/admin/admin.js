@@ -87,13 +87,13 @@
   }
 
   // ---- tabs --------------------------------------------------------------
-  const TABS = { widgets: 'Widgets', display: 'Display', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security' };
+  const TABS = { widgets: 'Widgets', display: 'Display', themes: 'Themes', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security' };
 
   function render() {
     $('#tabs').replaceChildren(...Object.entries(TABS).map(([k, label]) =>
       h('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; render(); } }, label)));
     const view = $('#view');
-    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity })[tab]());
+    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, themes: viewThemes, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity })[tab]());
   }
 
   // ---- widgets -----------------------------------------------------------
@@ -361,9 +361,15 @@
     return panel;
   }
 
-  function viewDisplay() {
+  // Shared by the Themes and Display tabs: the display settings object and a field-builder bound to it.
+  function displayHelpers() {
     const d = cfg.display;
-    const F = (key, label, type, extra = {}) => field({ key, label, type, ...extra }, d);
+    return { d, F: (key, label, type, extra = {}) => field({ key, label, type, ...extra }, d) };
+  }
+
+  // ---- Themes tab: the look (theme or theme mode, colors, fonts), the background, and the night look -----
+  function viewThemes() {
+    const { d, F } = displayHelpers();
     const fonts = Object.entries(window.PIDASH_FONTS).map(([value, f]) => ({ value, label: f.label }));
     return [
       h('div', { class: 'panel' }, h('h2', {}, 'Theme'),
@@ -375,6 +381,21 @@
         F('font', 'Font', 'select', { options: fonts }),
         F('fontScale', 'Text size (%)', 'number', { placeholder: '100', help: '80-150. Use this to fit your screen or TV.' })),
       backgroundPanel(d, F),
+      h('div', { class: 'panel' }, h('h2', {}, 'Night'),
+        h('p', { class: 'muted small' }, 'Between the night hours below you can switch to a different theme and/or dim the screen.'),
+        F('nightMode', 'Dim the screen at night', 'checkbox'),
+        F('nightStart', 'Night starts (hour 0-23)', 'number'),
+        F('nightEnd', 'Night ends (hour 0-23)', 'number'),
+        F('nightDim', 'Night brightness (0 = black, 1 = full)', 'number'),
+        h('span', { style: 'display:block;font-weight:600;font-size:13px;margin:10px 0 6px' }, 'Night theme'),
+        themeGrid(d, 'nightTheme', true)),
+    ];
+  }
+
+  // ---- Display tab: how the screen is arranged and the basics -----------------------------------------
+  function viewDisplay() {
+    const { d, F } = displayHelpers();
+    return [
       h('div', { class: 'panel' }, h('h2', {}, 'Layout'),
         h('p', { class: 'muted small' }, 'How the screen is arranged. "Always visible" widgets (set on the Widgets tab) go in the bar or sidebar; the rest rotate. On portrait screens the side-by-side layouts become a top bar automatically.'),
         layoutGrid(d),
@@ -387,14 +408,6 @@
         F('contentFit', 'Widget content fit', 'select', { options: [{ value: 'fill', label: 'Fill - shrink to fit and grow to use spare room' }, { value: 'shrink', label: 'Shrink only - never enlarge' }, { value: 'off', label: 'Off - fixed size' }], help: 'Scales each widget so nothing is cut off in its cell.' }),
         F('dots', 'Show the page dots at the bottom', 'checkbox', { default: true })),
       d.layout === 'grid-rotate' ? paneEditor(d) : null,
-      h('div', { class: 'panel' }, h('h2', {}, 'Night'),
-        h('p', { class: 'muted small' }, 'Between the night hours below you can switch to a different theme and/or dim the screen.'),
-        F('nightMode', 'Dim the screen at night', 'checkbox'),
-        F('nightStart', 'Night starts (hour 0-23)', 'number'),
-        F('nightEnd', 'Night ends (hour 0-23)', 'number'),
-        F('nightDim', 'Night brightness (0 = black, 1 = full)', 'number'),
-        h('span', { style: 'display:block;font-weight:600;font-size:13px;margin:10px 0 6px' }, 'Night theme'),
-        themeGrid(d, 'nightTheme', true)),
       h('div', { class: 'panel' }, h('h2', {}, 'Display'),
         F('title', 'Browser tab title', 'text'),
         F('rotateSeconds', 'Seconds each rotating widget stays on screen', 'number'),
