@@ -13,6 +13,7 @@ function listReminders() {
 function addReminder({ text, due, starred }) {
   const t = String(text || '').trim().slice(0, 200);
   if (!t) throw new Error('Reminder text is required.');
+  if (due && !/^\d{4}-\d{2}-\d{2}$/.test(String(due))) throw new Error('The date should look like 2026-10-31.');
   const list = listReminders();
   const item = { id: crypto.randomBytes(4).toString('hex'), text: t, due: due || null, done: false, starred: !!starred, created: Date.now() };
   list.push(item);
@@ -25,8 +26,15 @@ function updateReminder(id, patch) {
   const item = list.find((r) => r.id === id);
   if (!item) return null;
   if ('done' in patch) item.done = !!patch.done;
-  if ('text' in patch) item.text = String(patch.text).slice(0, 200);
-  if ('due' in patch) item.due = patch.due || null;
+  if ('text' in patch) {
+    const text = String(patch.text == null ? '' : patch.text).trim().slice(0, 200);
+    if (!text) throw new Error('Reminder text is required.');
+    item.text = text;
+  }
+  if ('due' in patch) {
+    if (patch.due && !/^\d{4}-\d{2}-\d{2}$/.test(String(patch.due))) throw new Error('The date should look like 2026-10-31.');
+    item.due = patch.due || null;
+  }
   if ('starred' in patch) item.starred = !!patch.starred;
   config.writeJson(REMINDERS_FILE, list);
   return item;

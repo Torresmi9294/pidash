@@ -577,13 +577,29 @@
     const text = h('input', { type: 'text', class: 'grow', placeholder: 'e.g. Take out the trash' });
     const due = h('input', { type: 'date' });
     const star = h('label', { class: 'chk', style: 'margin:0' }, h('input', { type: 'checkbox' }), '\u2605 Pin');
-    const load = guard(async () => {
-      const items = await api('GET', '/reminders');
-      list.replaceChildren(items.length ? items.map((r) => h('div', { class: `rem ${r.done ? 'done' : ''}` },
+    let editing = null; // id of the reminder being edited in place
+    const row = (r) => {
+      if (r.id === editing) {
+        const t = h('input', { type: 'text', class: 'grow', value: r.text, maxlength: 200 });
+        const dd = h('input', { type: 'date', value: r.due || '' });
+        const saveEdit = guard(async () => { await api('PATCH', `/reminders/${r.id}`, { text: t.value, due: dd.value || null }); editing = null; load(); });
+        const cancel = () => { editing = null; load(); };
+        t.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveEdit(); else if (e.key === 'Escape') cancel(); });
+        setTimeout(() => t.focus(), 0);
+        return h('div', { class: 'rem' }, t, dd, h('button', { class: 'btn sm primary', onclick: saveEdit }, 'Save'), h('button', { class: 'btn sm', onclick: cancel }, 'Cancel'));
+      }
+      const startEdit = () => { editing = r.id; load(); };
+      return h('div', { class: `rem ${r.done ? 'done' : ''}` },
         h('input', { type: 'checkbox', checked: r.done, onchange: guard(async (e) => { await api('PATCH', `/reminders/${r.id}`, { done: e.target.checked }); load(); }) }),
         h('button', { class: 'btn sm ghost', title: r.starred ? 'Unpin from the top' : 'Pin to the top and highlight', onclick: guard(async () => { await api('PATCH', `/reminders/${r.id}`, { starred: !r.starred }); load(); }) }, r.starred ? '\u2605' : '\u2606'),
-        h('span', { class: 't' }, r.text), r.due ? h('span', { class: 'pill' }, r.due) : null,
-        h('button', { class: 'btn sm danger', onclick: guard(async () => { await api('DELETE', `/reminders/${r.id}`); load(); }) }, 'Delete'))) : h('p', { class: 'muted' }, 'No reminders.'));
+        h('span', { class: 't', title: 'Double-click to edit', ondblclick: startEdit }, r.text), r.due ? h('span', { class: 'pill' }, r.due) : null,
+        h('button', { class: 'btn sm', onclick: startEdit }, 'Edit'),
+        h('button', { class: 'btn sm danger', onclick: guard(async () => { await api('DELETE', `/reminders/${r.id}`); load(); }) }, 'Delete'));
+    };
+    const load = guard(async () => {
+      const items = await api('GET', '/reminders');
+      // replaceChildren takes the nodes themselves, not an array of them
+      list.replaceChildren(...(items.length ? items.map(row) : [h('p', { class: 'muted' }, 'No reminders.')]));
     });
     load();
     const add = guard(async () => { await api('POST', '/reminders', { text: text.value, due: due.value || null, starred: star.querySelector('input').checked }); text.value = ''; due.value = ''; star.querySelector('input').checked = false; load(); });

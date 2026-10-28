@@ -329,11 +329,15 @@ function createApp() {
     }
   });
   admin.patch('/reminders/:id', (req, res) => {
-    const item = store.updateReminder(req.params.id, req.body || {});
-    if (!item) return res.status(404).json({ error: 'Not found' });
-    widgets.clearCache();
-    broadcast();
-    res.json(item);
+    try {
+      const item = store.updateReminder(req.params.id, req.body || {});
+      if (!item) return res.status(404).json({ error: 'Not found' });
+      widgets.clearCache();
+      broadcast();
+      res.json(item);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
   admin.delete('/reminders/:id', (req, res) => {
     widgets.clearCache();
