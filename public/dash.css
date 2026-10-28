@@ -220,6 +220,9 @@ body {
 .fr-name, .fm-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fr-name small, .fm-name small { color: var(--muted); font-size: calc(0.72 * var(--u)); }
 .fr-proj, .fm-proj { flex: none; color: var(--muted); font-size: calc(0.78 * var(--u)); font-variant-numeric: tabular-nums; }
+.fr-legend { display: flex; justify-content: flex-end; gap: calc(1.1 * var(--u)); padding: 0 calc(0.4 * var(--u)); font-size: calc(0.62 * var(--u)); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.fr-legend span { min-width: calc(2.4 * var(--u)); text-align: right; }
+.fr-wk { flex: none; min-width: calc(2.6 * var(--u)); text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); }
 .fr-pts, .fm-pts { flex: none; min-width: calc(2.4 * var(--u)); text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .fr-inj { margin-left: calc(0.35 * var(--u)); font-size: calc(0.6 * var(--u)); font-weight: 800; padding: 0 calc(0.3 * var(--u)); border-radius: calc(0.3 * var(--u)); color: #000; vertical-align: middle; }
 .fr-inj.warn { background: var(--warn); } .fr-inj.bad { background: var(--bad); }

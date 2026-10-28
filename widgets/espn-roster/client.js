@@ -24,6 +24,7 @@
       const showInj = options.showInjuries !== false;
       const showPhoto = options.showHeadshots !== false;
       const showLogo = options.showLogos !== false;
+      const weeks = d.daily && d.teams.some((t) => [...t.starters, ...t.bench, ...t.reserve].some((p) => p.week != null)); // matchup-to-date column
       const perTeam = Math.max(5, Number(options.itemSeconds) || 12);
       let i = Math.min(el._frIndex || 0, d.teams.length - 1);
       let elapsed = 0;
@@ -34,7 +35,8 @@
         h('span', { class: 'fr-name' }, p.short, p.team ? h('small', {}, ` ${p.team}`) : null,
           showInj && p.injury ? h('span', { class: `fr-inj ${p.injuryLevel}` }, p.injury) : null),
         showProj && p.proj != null ? h('span', { class: 'fr-proj' }, p.proj) : null,
-        h('span', { class: 'fr-pts' }, points(p)));
+        h('span', { class: 'fr-pts' }, points(p)),
+        weeks ? h('span', { class: 'fr-wk' }, p.week == null ? '–' : p.week) : null);
 
       const section = (label, rows, extra) => (rows.length
         ? h('div', { class: 'fr-group', 'data-fit-group': true }, h('div', { class: 'fr-label' }, label), rows.map((p) => row(p, extra)))
@@ -54,6 +56,7 @@
               d.daily ? h('small', {}, 'today') : null,
               t.week != null ? h('small', {}, `week ${t.week}`) : null,
               showProj && t.proj ? h('small', {}, `proj ${t.proj}`) : null)),
+          weeks ? h('div', { class: 'fr-legend' }, showProj ? h('span', {}, 'proj') : null, h('span', {}, 'today'), h('span', {}, 'week')) : null,
           h('div', { class: 'fr-list' },
             t.starters.map((p) => row(p)),
             showBench ? section('Bench', t.bench, 'bench') : null,

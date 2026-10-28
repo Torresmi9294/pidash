@@ -258,3 +258,64 @@ test('admin: /api/admin/espn-debug/<widget id> serves the summary for ESPN widge
     server.close();
   }
 });
+
+// ---- the two roster shapes ESPN sends for a matchup -------------------------------------------------------------------
+const entry = (id, name, slot, pts, pos = 1) => ({ lineupSlotId: slot, playerPoolEntry: { id, appliedStatTotal: pts, player: { id, fullName: name, defaultPositionId: pos, stats: [] } } });
+// today's lineup (real slots) and the matchup-to-date roster (no real slots: everyone in slot 0, week totals)
+const dailySide = (teamId, week, live) => ({
+  teamId, totalPoints: 0, totalPointsLive: live,
+  rosterForCurrentScoringPeriod: { entries: [entry(1, 'Guard One', 0, 0, 1), entry(2, 'Wing Two', 2, 0, 3), entry(3, 'Big Three', 4, 0, 5), entry(4, 'Bench Four', 12, 0, 2)] },
+  rosterForMatchupPeriod: { entries: [entry(1, 'Guard One', 0, week[0], 1), entry(2, 'Wing Two', 0, week[1], 3), entry(3, 'Big Three', 0, week[2], 5), entry(4, 'Bench Four', 0, week[3], 2)] },
+});
+const dailyLeague = () => {
+  const lg = basketball(7);
+  lg.schedule = [{ matchupPeriodId: 1, home: dailySide(1, [40, 30, 20, 10], 100), away: dailySide(2, [35, 25, 15, 5], 80) }];
+  return lg;
+};
+
+test('basketball matchup: slots come from today\'s lineup and points are each player\'s matchup-to-date total', async () => {
+  serve(dailyLeague());
+  const d = await matchup.data({ sport: 'fba', leagueId: '42', season: '2027', teamId: 1 });
+  assert.match(seen.url, /view=mBoxscore/);
+  const m = d.matchups[0];
+  assert.deepEqual(m.rows.map((r) => r.slot), ['PG', 'SF', 'C'], 'real slots, not "PG" for everyone');
+  assert.deepEqual(m.rows.map((r) => [r.home.pts, r.away.pts]), [[40, 35], [30, 25], [20, 15]], 'week totals');
+  assert.equal(m.rows[0].home.day, 0, 'today\'s points are kept too');
+  assert.deepEqual(m.home.bench.map((p) => [p.name, p.pts]), [['Bench Four', 10]]);
+  assert.equal(m.home.score, 100);
+});
+
+test('matchup: no usable slots (everyone in slot 0) falls back to position labels', async () => {
+  const lg = dailyLeague();
+  for (const s of [lg.schedule[0].home, lg.schedule[0].away]) s.rosterForCurrentScoringPeriod = { entries: [] };
+  serve(lg);
+  const d = await matchup.data({ sport: 'fba', leagueId: '42', season: '2027', teamId: 1 });
+  assert.deepEqual(d.matchups[0].rows.map((r) => r.slot), ['PG', 'SF', 'C', 'SG'], 'labelled by position, not all PG');
+});
+
+test('football matchup: an empty matchup-period roster does not hide the real lineup', async () => {
+  const lg = league();
+  for (const m of lg.schedule) for (const s of [m.home, m.away]) s.rosterForMatchupPeriod = { appliedStatTotal: 0, entries: [] }; // present but empty before the week's games
+  serve(lg);
+  const d = await matchup.data({ sport: 'ffl', leagueId: '42', season: '2026', teamId: 2 });
+  assert.match(seen.url, /view=mBoxscore/, 'asks for the view that carries lineups');
+  assert.deepEqual(d.matchups[0].rows.map((r) => r.slot), ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'D/ST', 'K']);
+  assert.ok(d.matchups[0].rows.every((r) => r.home && r.away));
+});
+
+test('basketball roster: each player also shows their matchup-to-date total (the Today column is empty before games)', async () => {
+  const lg = dailyLeague();
+  // the roster's own entries need the same player ids
+  lg.teams[0].roster.entries = [entry(1, 'Guard One', 0, 0, 1), entry(2, 'Wing Two', 2, 0, 3), entry(3, 'Big Three', 4, 0, 5), entry(4, 'Bench Four', 12, 0, 2)];
+  serve(lg);
+  const d = await roster.data({ sport: 'fba', leagueId: '42', season: '2027', teamId: 1 });
+  const t = d.teams[0];
+  assert.deepEqual(t.starters.map((p) => [p.name, p.week]), [['Guard One', 40], ['Wing Two', 30], ['Big Three', 20]]);
+  assert.deepEqual(t.bench.map((p) => [p.name, p.week]), [['Bench Four', 10]]);
+  assert.equal(t.week, 100, 'and the team\'s running total');
+  assert.ok(t.starters.every((p) => p.pts == null), 'today: nothing played yet');
+  // football rows have no week column
+  serve(league());
+  const f = await roster.data({ sport: 'ffl', leagueId: '42', season: '2026', teamId: 1 });
+  assert.ok(f.teams[0].starters.every((p) => p.week === undefined));
+});

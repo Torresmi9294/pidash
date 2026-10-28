@@ -21,7 +21,7 @@ exports.meta = {
 };
 
 exports.data = async (o, ctx = {}) => {
-  const { d, headers, sport, season } = await fantasy.fetchLeague(o, ['mTeam', 'mRoster', 'mMatchupScore', 'mSettings']);
+  const { d, headers, sport, season } = await fantasy.fetchLeague(o, ['mRoster', ...fantasy.MATCHUP_VIEWS]);
   const standings = fantasy.buildStandings(d);
   const byId = new Map((d.teams || []).map((t) => [t.id, t]));
   const period = d.scoringPeriodId || (d.status && d.status.currentMatchupPeriod) || 1;
@@ -39,9 +39,23 @@ exports.data = async (o, ctx = {}) => {
     return null;
   };
 
+  // Each player's total over the matchup so far (daily sports), keyed by player id.
+  const weekByPlayer = (teamId) => {
+    if (sport === 'ffl' || !matchupPeriod) return null;
+    for (const m of d.schedule || []) {
+      if (m.matchupPeriodId !== matchupPeriod) continue;
+      const side = [m.home, m.away].find((x) => x && x.teamId === teamId);
+      const entries = side && side.rosterForMatchupPeriod && side.rosterForMatchupPeriod.entries;
+      if (entries && entries.length) return new Map(entries.map((e) => [fantasy.playerId(e), Number(e.playerPoolEntry && e.playerPoolEntry.appliedStatTotal)]));
+    }
+    return null;
+  };
+
   const card = (st) => {
     const t = byId.get(st.id);
     const r = fantasy.parseRoster((t.roster && t.roster.entries) || [], { sport, period });
+    const wk = weekByPlayer(st.id);
+    if (wk) for (const p of [...r.starters, ...r.bench, ...r.reserve]) p.week = wk.has(p.id) && Number.isFinite(wk.get(p.id)) ? fantasy.round1(wk.get(p.id)) : null;
     return {
       week: weekScore(st.id),
       id: st.id, name: st.name, abbrev: st.abbrev, logo: st.logo, rank: st.rank, record: fantasy.recordText(st), streak: st.streak,

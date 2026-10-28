@@ -22,7 +22,7 @@ exports.meta = {
 };
 
 exports.data = async (o, ctx = {}) => {
-  const { d, headers, sport, season } = await fantasy.fetchLeague(o, ['mTeam', 'mMatchupScore', 'mMatchup', 'mSettings']);
+  const { d, headers, sport, season } = await fantasy.fetchLeague(o, fantasy.MATCHUP_VIEWS);
   const standings = fantasy.buildStandings(d);
   const info = new Map(standings.map((t) => [t.id, t]));
   const period = (d.status && d.status.currentMatchupPeriod) || d.scoringPeriodId || 1;
@@ -30,8 +30,7 @@ exports.data = async (o, ctx = {}) => {
 
   const team = (s) => {
     const st = info.get(s.teamId) || { id: s.teamId, name: `Team ${s.teamId}`, abbrev: '', logo: '', wins: 0, losses: 0, ties: 0, rank: 0 };
-    const entries = (s.rosterForMatchupPeriod || s.rosterForCurrentScoringPeriod || {}).entries || [];
-    const r = fantasy.parseRoster(entries, { sport, period: scoringPeriod, fromMatchup: true });
+    const r = fantasy.parseSide(s, { sport, period: scoringPeriod });
     return {
       id: st.id, name: st.name, abbrev: st.abbrev, logo: st.logo, rank: st.rank, record: fantasy.recordText(st),
       score: fantasy.liveScore(s), proj: fantasy.sum(r.starters, 'proj'),

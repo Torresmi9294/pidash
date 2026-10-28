@@ -186,6 +186,34 @@ function parseRoster(entries, { sport, period, fromMatchup = false }) {
   };
 }
 
+// The views that carry lineups for a matchup. mBoxscore is what ESPN's own box-score page asks for (football needs it);
+// mMatchup is what the daily sports return their rosters under. Unknown views are ignored by ESPN.
+const MATCHUP_VIEWS = ['mTeam', 'mBoxscore', 'mMatchupScore', 'mMatchup', 'mSettings'];
+
+const playerId = (e) => { const pe = (e && e.playerPoolEntry) || {}; return pe.player && pe.player.id != null ? pe.player.id : pe.id; };
+
+// One side of a matchup (schedule[].home / .away) -> starters, bench and reserve.
+// ESPN gives two rosters: rosterForCurrentScoringPeriod (the lineup for today/this week, with real slots) and
+// rosterForMatchupPeriod (every player's total over the whole matchup, but no meaningful slots). Either can be present
+// but empty, so take the lineup from whichever has players, preferring the current one. In the daily sports each
+// player's points are the matchup-to-date total (so the rows add up to the team's score); `day` keeps today's points.
+function parseSide(s, { sport, period }) {
+  const cur = ((s && s.rosterForCurrentScoringPeriod) || {}).entries || [];
+  const mat = ((s && s.rosterForMatchupPeriod) || {}).entries || [];
+  const r = parseRoster(cur.length ? cur : mat, { sport, period, fromMatchup: true });
+  const all = () => [...r.starters, ...r.bench, ...r.reserve];
+  if (sport !== 'ffl' && cur.length && mat.length) {
+    const total = new Map(mat.map((e) => [playerId(e), e.playerPoolEntry && Number(e.playerPoolEntry.appliedStatTotal)]));
+    for (const p of all()) {
+      const t = total.get(p.id);
+      if (Number.isFinite(t)) { p.day = p.pts; p.pts = round1(t); }
+    }
+  }
+  // No real slots (every starter in slot 0, as the matchup roster reports): label by position instead of "PG" for all.
+  if (r.starters.length > 2 && new Set(r.starters.map((p) => p.slotId)).size === 1) r.starters.forEach((p) => { p.slot = p.pos || p.slot; });
+  return r;
+}
+
 const sum = (rows, key) => round1(rows.reduce((n, r) => n + (Number(r[key]) || 0), 0));
 
 // Serve logos/headshots from this server (cached, no hotlink/referrer problems), like the league overview does.
@@ -203,13 +231,14 @@ function proxyImages(ctx, headers, items) {
 
 // What ESPN sent for this league, boiled down so the shape of the data can be checked by eye (and pasted into a bug report).
 async function debugSummary(o) {
-  const { d, sport, season } = await fetchLeague(o, ['mTeam', 'mRoster', 'mMatchupScore', 'mSettings']);
+  const { d, sport, season } = await fetchLeague(o, ['mRoster', ...MATCHUP_VIEWS]);
   const period = d.scoringPeriodId;
   const mp = d.status && d.status.currentMatchupPeriod;
   const pick = (obj, keys) => Object.fromEntries(keys.filter((k) => obj && k in obj).map((k) => [k, obj[k]]));
   const team = (d.teams || []).find((t) => t.roster && (t.roster.entries || []).length) || (d.teams || [])[0] || {};
   const matchup = (d.schedule || []).find((m) => m.matchupPeriodId === mp && m.home && m.away);
-  const side = (s) => s && { ...pick(s, ['teamId', 'totalPoints', 'totalPointsLive', 'totalProjectedPointsLive', 'gamesPlayed']), hasRosterForCurrentScoringPeriod: !!s.rosterForCurrentScoringPeriod, hasRosterForMatchupPeriod: !!s.rosterForMatchupPeriod };
+  const count = (r) => (r ? (r.entries || []).length : null); // null = ESPN did not send it, 0 = sent but empty
+  const side = (s) => s && { ...pick(s, ['teamId', 'totalPoints', 'totalPointsLive', 'totalProjectedPointsLive', 'gamesPlayed']), playersInRosterForCurrentScoringPeriod: count(s.rosterForCurrentScoringPeriod), playersInRosterForMatchupPeriod: count(s.rosterForMatchupPeriod) };
   const mps = d.settings && d.settings.scheduleSettings && d.settings.scheduleSettings.matchupPeriods;
   return {
     sport, season,
@@ -231,7 +260,7 @@ async function debugSummary(o) {
 }
 
 module.exports = {
-  debugSummary,
+  debugSummary, MATCHUP_VIEWS, parseSide, playerId,
   CONNECTION_FIELDS, currentSeason, clean, cleanSwid, teamName, round1, fetchLeague, buildStandings, recordText,
   parseRoster, parseEntry, statTotal, liveScore, sum, proxyImages, initialName, SLOTS, POSITIONS,
 };
