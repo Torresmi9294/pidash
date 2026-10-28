@@ -21,15 +21,29 @@ exports.meta = {
 };
 
 exports.data = async (o, ctx = {}) => {
-  const { d, headers, sport, season } = await fantasy.fetchLeague(o, ['mTeam', 'mRoster', 'mSettings']);
+  const { d, headers, sport, season } = await fantasy.fetchLeague(o, ['mTeam', 'mRoster', 'mMatchupScore', 'mSettings']);
   const standings = fantasy.buildStandings(d);
   const byId = new Map((d.teams || []).map((t) => [t.id, t]));
   const period = d.scoringPeriodId || (d.status && d.status.currentMatchupPeriod) || 1;
+
+  // Football weeks are one scoring period, so "this week" is the roster's own total. Basketball, baseball and hockey
+  // score every day inside a longer matchup, so also show the matchup's running total (it grows each day).
+  const matchupPeriod = d.status && d.status.currentMatchupPeriod;
+  const weekScore = (teamId) => {
+    if (sport === 'ffl' || !matchupPeriod) return null;
+    for (const m of d.schedule || []) {
+      if (m.matchupPeriodId !== matchupPeriod) continue;
+      const side = [m.home, m.away].find((x) => x && x.teamId === teamId);
+      if (side) return fantasy.liveScore(side);
+    }
+    return null;
+  };
 
   const card = (st) => {
     const t = byId.get(st.id);
     const r = fantasy.parseRoster((t.roster && t.roster.entries) || [], { sport, period });
     return {
+      week: weekScore(st.id),
       id: st.id, name: st.name, abbrev: st.abbrev, logo: st.logo, rank: st.rank, record: fantasy.recordText(st), streak: st.streak,
       points: fantasy.sum(r.starters, 'pts'), proj: fantasy.sum(r.starters, 'proj'),
       starters: r.starters, bench: r.bench, reserve: r.reserve,
@@ -49,5 +63,5 @@ exports.data = async (o, ctx = {}) => {
   }
 
   fantasy.proxyImages(ctx, headers, [...teams, ...teams.flatMap((t) => [...t.starters, ...t.bench, ...t.reserve])]);
-  return { leagueName: (d.settings && d.settings.name) || 'League', season, period, sport, teams, single: teams.length === 1 };
+  return { leagueName: (d.settings && d.settings.name) || 'League', season, period, matchupPeriod: matchupPeriod || null, sport, daily: sport !== 'ffl', teams, single: teams.length === 1 };
 };

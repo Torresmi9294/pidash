@@ -11,6 +11,7 @@ const health = require('./health');
 const logos = require('./logos');
 const updater = require('./updater');
 const Schedule = require('../public/schedule');
+const fantasy = require('./espn-fantasy');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const BG_DIR = path.join(config.DATA_DIR, 'backgrounds');
@@ -410,6 +411,18 @@ function createApp() {
       res.json(updater.requestInstall());
     } catch (e) {
       res.status(e.status || 400).json({ error: e.message });
+    }
+  });
+
+  // Diagnostics for the ESPN fantasy widgets: what ESPN actually sent (no cookies, no secrets), trimmed to a few players.
+  // Open /api/admin/espn-debug/<widget id> in the browser, e.g. when points look wrong for one sport.
+  admin.get('/espn-debug/:id', async (req, res) => {
+    const w = config.get().widgets.find((x) => x.id === req.params.id && /^espn-/.test(x.type));
+    if (!w) return res.status(404).json({ error: 'No ESPN fantasy widget with that id. Use the id shown next to the widget name on the Widgets tab.' });
+    try {
+      res.json(await fantasy.debugSummary(w.options || {}));
+    } catch (e) {
+      res.status(502).json({ error: e.message });
     }
   });
 

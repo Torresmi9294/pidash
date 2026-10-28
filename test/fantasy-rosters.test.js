@@ -130,3 +130,131 @@ test('league widget: Layout setting (side by side by default, or stacked)', () =
   assert.match(client, /showM && showS \?/, 'only applies when both sections are shown');
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'dash.css'), 'utf8'), /\.espn\.stacked \{/);
 });
+
+// ---- basketball-style data: daily scoring periods inside a weekly matchup --------------------------------------------
+// ESPN lists season totals, last-7/15/30 and the single-day entries together; only the day entries have a real
+// scoringPeriodId, and their statSplitTypeId is not the football one.
+function basketball(day = 7) {
+  const lg = league();
+  const grab = (e) => {
+    const p = e.playerPoolEntry.player;
+    const mine = p.stats.find((x) => x.statSourceId === 0 && x.statSplitTypeId === 1);
+    const proj = p.stats.find((x) => x.statSourceId === 1 && x.statSplitTypeId === 1);
+    const pts = mine.appliedTotal;
+    p.stats = [
+      { id: '002027', scoringPeriodId: 0, statSourceId: 0, statSplitTypeId: 0, appliedTotal: 999 },           // season
+      { id: '012027', scoringPeriodId: 0, statSourceId: 0, statSplitTypeId: 2, appliedTotal: 888 },           // last 7
+      { id: '102027', scoringPeriodId: 0, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 777 },           // projected season
+      { id: `11202700${day - 1}`, scoringPeriodId: day - 1, statSourceId: 0, statSplitTypeId: 5, appliedTotal: 55 }, // yesterday
+      { id: `11202700${day}`, scoringPeriodId: day, statSourceId: 0, statSplitTypeId: 5, appliedTotal: pts },   // today
+      { id: `10202700${day}`, scoringPeriodId: day, statSourceId: 1, statSplitTypeId: 5, appliedTotal: proj.appliedTotal },
+    ];
+    e.lineupSlotId = e.lineupSlotId === 20 ? 12 : e.lineupSlotId === 21 ? 13 : e.lineupSlotId;
+  };
+  for (const t of lg.teams) t.roster.entries.forEach(grab);
+  lg.scoringPeriodId = day;
+  lg.status.currentMatchupPeriod = 1;
+  // the week's matchups: ESPN keeps the running total in totalPointsLive while totalPoints can still read 0
+  lg.schedule = lg.schedule.filter((m) => m.matchupPeriodId === 7).map((m) => ({ ...m, matchupPeriodId: 1 }));
+  Object.assign(lg.schedule[0].home, { totalPoints: 0, totalPointsLive: 312.4 });
+  Object.assign(lg.schedule[0].away, { totalPoints: 150.2 });
+  Object.assign(lg.schedule[1].home, { totalPoints: 0 });
+  Object.assign(lg.schedule[1].away, { totalPoints: 0 });
+  return lg;
+}
+
+test('basketball roster: points come from the current scoring period (day), not season, last-7 or another day', async () => {
+  serve(basketball(7));
+  const d = await roster.data({ sport: 'fba', leagueId: '42', season: '2027', teamId: 1 });
+  const t = d.teams[0];
+  assert.ok(t.starters.length > 0);
+  assert.ok(t.starters.every((p) => p.pts != null && p.pts < 100), `daily points only: ${t.starters.map((p) => p.pts)}`);
+  assert.ok(t.starters.every((p) => p.proj != null && p.proj < 100), 'daily projection, not the 777 season one');
+  assert.notEqual(t.points, 0);
+
+  // tomorrow: the same roster now has a different day's entries and the roster follows
+  const next = basketball(8);
+  serve(next);
+  const d2 = await roster.data({ sport: 'fba', leagueId: '42', season: '2027', teamId: 1 });
+  assert.equal(d2.period, 8);
+  assert.ok(d2.teams[0].starters.every((p) => p.pts < 100));
+  assert.equal(d.period, 7);
+});
+
+test('basketball roster: a day with no entry yet shows no points (not yesterday\'s)', async () => {
+  const lg = basketball(7);
+  lg.scoringPeriodId = 9; // today has no stats entries yet
+  serve(lg);
+  const d = await roster.data({ sport: 'fba', leagueId: '42', season: '2027', teamId: 1 });
+  assert.ok(d.teams[0].starters.every((p) => p.pts == null), 'nothing shown for a day that has not been played');
+  assert.equal(d.teams[0].points, 0);
+});
+
+test('basketball roster: also shows the matchup\'s running total, preferring the live figure', async () => {
+  serve(basketball(7));
+  const d = await roster.data({ sport: 'fba', leagueId: '42', season: '2027' });
+  assert.equal(d.daily, true);
+  const by = (id) => d.teams.find((t) => t.id === id);
+  assert.equal(by(1).week, 312.4, 'totalPointsLive wins over a lagging totalPoints of 0');
+  assert.equal(by(2).week, 150.2, 'falls back to totalPoints when there is no live figure');
+  assert.equal(by(3).week, 0);
+  // football is one scoring period per week, so there is nothing extra to show
+  serve(league());
+  const f = await roster.data({ sport: 'ffl', leagueId: '42', season: '2026' });
+  assert.equal(f.daily, false);
+  assert.ok(f.teams.every((t) => t.week === null));
+});
+
+test('basketball matchup: team scores use the live running total', async () => {
+  serve(basketball(7));
+  const d = await matchup.data({ sport: 'fba', leagueId: '42', season: '2027', teamId: 1 });
+  assert.equal(d.matchups[0].home.score, 312.4);
+  assert.equal(d.matchups[0].away.score, 150.2);
+  assert.equal(d.matchups[0].margin, 162.2);
+});
+
+test('league widget: scores use the live total too', async () => {
+  const league1 = require('../widgets/espn-fantasy/server');
+  serve(basketball(7));
+  const d = await league1.data({ sport: 'fba', leagueId: '42', season: '2027' });
+  assert.equal(d.matchups[0].home.score, 312.4);
+});
+
+test('espn-debug summary shows what ESPN sent, without secrets', async () => {
+  const fantasy = require('../server/espn-fantasy');
+  serve(basketball(7));
+  const s = await fantasy.debugSummary({ sport: 'fba', leagueId: '42', season: '2027', swid: '{SECRET-SWID}', espnS2: 'SECRETCOOKIE' });
+  assert.equal(s.scoringPeriodId, 7);
+  assert.equal(s.status.currentMatchupPeriod, 1);
+  assert.ok(s.sampleTeam.entries.length > 0);
+  const e = s.sampleTeam.entries[0];
+  assert.equal(typeof e.parsedPoints, 'number');
+  assert.ok(e.stats.some((x) => x.scoringPeriodId === 7 && x.statSplitTypeId === 5));
+  assert.equal(s.sampleMatchup.home.totalPointsLive, 312.4);
+  assert.ok(!JSON.stringify(s).match(/SECRET/));
+});
+
+test('admin: /api/admin/espn-debug/<widget id> serves the summary for ESPN widgets only', async () => {
+  const { createApp } = require('../server/app');
+  const server = createApp().listen(0);
+  await new Promise((r) => server.once('listening', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const get = (p, o = {}) => realFetch(base + p, { ...o, headers: { 'content-type': 'application/json' }, body: o.body && JSON.stringify(o.body) });
+  try {
+    const cfg = await (await get('/api/admin/config')).json();
+    cfg.widgets.push({ id: 'fr-dbg', type: 'espn-roster', enabled: true, slot: 'rotate', options: { sport: 'fba', leagueId: '42', season: '2027', swid: '{SECRET}', espnS2: 'SECRETCOOKIE' } });
+    await get('/api/admin/config', { method: 'PUT', body: cfg });
+    global.fetch = async (url, init) => (String(url).includes('lm-api-reads') ? new Response(JSON.stringify(basketball(7)), { status: 200 }) : realFetch(url, init));
+    const res = await get('/api/admin/espn-debug/fr-dbg');
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assert.ok(JSON.parse(text).sampleTeam.entries.length > 0);
+    assert.ok(!/SECRET/.test(text), 'no cookies in the output');
+    assert.equal((await get('/api/admin/espn-debug/clock-1')).status, 404, 'only ESPN widgets');
+    assert.equal((await get('/api/admin/espn-debug/nope')).status, 404);
+    global.fetch = async () => new Response('{}', { status: 403 });
+    assert.equal((await get('/api/admin/espn-debug/fr-dbg')).status, 502, 'ESPN problems come back as a readable error');
+  } finally {
+    server.close();
+  }
+});

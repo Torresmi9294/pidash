@@ -34,7 +34,7 @@ exports.data = async (o, ctx = {}) => {
     const r = fantasy.parseRoster(entries, { sport, period: scoringPeriod, fromMatchup: true });
     return {
       id: st.id, name: st.name, abbrev: st.abbrev, logo: st.logo, rank: st.rank, record: fantasy.recordText(st),
-      score: fantasy.round1(s.totalPoints), proj: fantasy.sum(r.starters, 'proj'),
+      score: fantasy.liveScore(s), proj: fantasy.sum(r.starters, 'proj'),
       starters: r.starters, bench: r.bench,
     };
   };

@@ -67,7 +67,7 @@ exports.data = async (o, ctx = {}) => {
       name: t ? teamName(t) : `Team ${s.teamId}`,
       abbrev: (t && t.abbrev) || '',
       logo: (t && t.logo) || '',
-      score: Math.round((s.totalPoints || 0) * 10) / 10,
+      score: fantasy.liveScore(s),
     };
   };
   const matchups = (d.schedule || [])

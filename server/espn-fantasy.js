@@ -127,9 +127,21 @@ const initialName = (full) => {
   return parts.length < 2 ? parts[0] || '' : `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
 };
 
+// A player's points (source 0) or projection (source 1) for one scoring period. ESPN lists a player's season totals,
+// last-7/15/30 averages and projections in the same array as the single-day entries; the day entries are the ones with
+// a real scoringPeriodId (the season ones have 0). Football weeks and basketball/baseball/hockey days are both "scoring
+// periods", but ESPN does not code them the same way (statSplitTypeId), so the period id is what we match on.
 function statTotal(player, source, period) {
-  const s = (player.stats || []).find((x) => x.statSourceId === source && x.statSplitTypeId === 1 && (period == null || x.scoringPeriodId === period));
+  const day = (player.stats || []).filter((x) => x.statSourceId === source && Number(x.scoringPeriodId) > 0 && (period == null || Number(x.scoringPeriodId) === Number(period)));
+  const s = day.find((x) => x.statSplitTypeId === 1) || day[0];
   return s && Number.isFinite(Number(s.appliedTotal)) ? round1(s.appliedTotal) : null;
+}
+
+// A matchup side's running score. ESPN keeps the live total of the matchup so far in totalPointsLive; totalPoints can
+// lag behind it (or stay at 0) until the matchup is final, which is common when a matchup spans several days.
+function liveScore(side) {
+  const live = Number(side && side.totalPointsLive);
+  return round1(Number.isFinite(live) && live > 0 ? live : (side && side.totalPoints) || 0);
 }
 
 // One roster entry -> a flat row. `fromMatchup` entries carry the week's points in appliedStatTotal;
@@ -189,7 +201,37 @@ function proxyImages(ctx, headers, items) {
   logos.warm(ctx.widgetId, sources.map((s) => logos.normalize(s)).filter(Boolean)).catch(() => {});
 }
 
+// What ESPN sent for this league, boiled down so the shape of the data can be checked by eye (and pasted into a bug report).
+async function debugSummary(o) {
+  const { d, sport, season } = await fetchLeague(o, ['mTeam', 'mRoster', 'mMatchupScore', 'mSettings']);
+  const period = d.scoringPeriodId;
+  const mp = d.status && d.status.currentMatchupPeriod;
+  const pick = (obj, keys) => Object.fromEntries(keys.filter((k) => obj && k in obj).map((k) => [k, obj[k]]));
+  const team = (d.teams || []).find((t) => t.roster && (t.roster.entries || []).length) || (d.teams || [])[0] || {};
+  const matchup = (d.schedule || []).find((m) => m.matchupPeriodId === mp && m.home && m.away);
+  const side = (s) => s && { ...pick(s, ['teamId', 'totalPoints', 'totalPointsLive', 'totalProjectedPointsLive', 'gamesPlayed']), hasRosterForCurrentScoringPeriod: !!s.rosterForCurrentScoringPeriod, hasRosterForMatchupPeriod: !!s.rosterForMatchupPeriod };
+  const mps = d.settings && d.settings.scheduleSettings && d.settings.scheduleSettings.matchupPeriods;
+  return {
+    sport, season,
+    scoringPeriodId: period,
+    status: pick(d.status, ['currentMatchupPeriod', 'latestScoringPeriod', 'firstScoringPeriod', 'finalScoringPeriod', 'isActive']),
+    scoringPeriodsInThisMatchup: mps && mp ? mps[mp] : undefined,
+    pickedPeriodForRosterPoints: period,
+    sampleTeam: { id: team.id, name: team.name, entries: ((team.roster && team.roster.entries) || []).slice(0, 4).map((e) => {
+      const p = (e.playerPoolEntry && e.playerPoolEntry.player) || {};
+      return {
+        slot: e.lineupSlotId, player: p.fullName, defaultPositionId: p.defaultPositionId, injuryStatus: p.injuryStatus,
+        appliedStatTotal: e.playerPoolEntry && e.playerPoolEntry.appliedStatTotal,
+        parsedPoints: statTotal(p, 0, period), parsedProjection: statTotal(p, 1, period),
+        stats: (p.stats || []).map((x) => pick(x, ['id', 'scoringPeriodId', 'statSourceId', 'statSplitTypeId', 'appliedTotal'])),
+      };
+    }) },
+    sampleMatchup: matchup && { matchupPeriodId: matchup.matchupPeriodId, home: side(matchup.home), away: side(matchup.away) },
+  };
+}
+
 module.exports = {
+  debugSummary,
   CONNECTION_FIELDS, currentSeason, clean, cleanSwid, teamName, round1, fetchLeague, buildStandings, recordText,
-  parseRoster, parseEntry, sum, proxyImages, initialName, SLOTS, POSITIONS,
+  parseRoster, parseEntry, statTotal, liveScore, sum, proxyImages, initialName, SLOTS, POSITIONS,
 };
