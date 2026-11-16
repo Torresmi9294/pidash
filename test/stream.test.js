@@ -328,3 +328,44 @@ test('end to end: a real browser and ffmpeg produce an H.264 + AAC HLS stream of
   await stream.stop('test over');
   assert.equal(fs.existsSync(dir), false);
 });
+
+test('in Docker: missing tools point at the stream image, and Chromium starts without its (impossible) sandbox', () => {
+  // module-level settings, so check in a fresh process that looks like the container; PATH has no ffmpeg
+  const code = `
+    process.env.DATA_DIR = ${JSON.stringify(process.env.DATA_DIR)};
+    const s = require(${JSON.stringify(path.join(__dirname, '..', 'server', 'stream.js'))});
+    const st = s.status();
+    console.log(JSON.stringify({ docker: st.requirements.docker, ffmpeg: st.requirements.ffmpeg, help: st.requirements.help, hint: st.requirements.installHint, noSandbox: s._internals.state.noSandbox }));`;
+  const out = require('node:child_process').spawnSync(process.execPath, ['-e', code], {
+    encoding: 'utf8', env: { PATH: path.dirname(process.execPath), PIDASH_INSTALL: 'docker', SystemRoot: process.env.SystemRoot || '' },
+  });
+  const r = JSON.parse(out.stdout.trim().split('\n').pop());
+  assert.equal(r.docker, true);
+  assert.equal(r.ffmpeg, false);
+  assert.match(r.help, /Streaming needs .*ffmpeg.* in the container/);
+  assert.match(r.help, /ghcr\.io\/torresmi9294\/pidash:stream/);
+  assert.match(r.help, /docker compose pull && docker compose up -d/);
+  assert.match(r.help, /PIDASH_STREAM=1/);
+  assert.doesNotMatch(r.help, /apt install/);
+  assert.equal(r.noSandbox, true);
+  // and outside Docker the help is the apt command
+  assert.match(stream.status().requirements.installHint, /apt install -y chromium ffmpeg/);
+  assert.equal(stream._internals.state.noSandbox, false);
+});
+
+test('Docker files: the stream image adds Chromium + ffmpeg only when asked, and compose can ask for it', () => {
+  const read = (...p) => fs.readFileSync(path.join(__dirname, '..', ...p), 'utf8');
+  const df = read('Dockerfile');
+  assert.match(df, /ARG STREAM=0/);
+  assert.match(df, /\[ "\$STREAM" = "1" \]/);
+  assert.match(df, /apk add --no-cache ffmpeg/);
+  assert.match(df, /apk add --no-cache chromium/);
+  assert.match(read('docker-compose.yml'), /STREAM: \$\{PIDASH_STREAM:-0\}/);
+  assert.match(read('.env.example'), /PIDASH_STREAM=0/);
+  assert.match(read('deploy', 'docker-compose.yml'), /pidash:stream/);
+  const wf = read('.github', 'workflows', 'docker.yml');
+  assert.match(wf, /STREAM=1/);
+  assert.match(wf, /needs: stream-smoke/, 'the stream image is only published after the smoke test passes');
+  assert.match(wf, /value=stream/);
+  assert.match(read('docs', 'DOCKER.md'), /ghcr\.io\/torresmi9294\/pidash:stream/);
+});

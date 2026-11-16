@@ -6,6 +6,8 @@
 services:
   pidash:
     image: ghcr.io/torresmi9294/pidash:latest
+    # Want Admin > Stream (a live link to add the display to an IPTV player)? Use the image that includes Chromium + ffmpeg:
+    # image: ghcr.io/torresmi9294/pidash:stream
     container_name: pidash
     restart: unless-stopped
     ports:

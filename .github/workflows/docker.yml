@@ -7,6 +7,7 @@ permissions:
   contents: read
   packages: write
 jobs:
+  # The standard image: small, no streaming tools.
   image:
     runs-on: ubuntu-latest
     steps:
@@ -35,3 +36,66 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Proves the stream image really streams: starts it, asks for the live stream and checks the video that comes back.
+  stream-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the stream image
+        run: docker build --build-arg STREAM=1 -t pidash:stream-test .
+      - name: Start it and watch the stream
+        run: |
+          docker run -d --name pidash -p 8080:8080 pidash:stream-test
+          for i in $(seq 1 30); do curl -fs http://localhost:8080/api/health >/dev/null && break; sleep 1; done
+          curl -fs http://localhost:8080/api/admin/stream | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["requirements"]); assert d["available"], "Chromium and ffmpeg should be in the stream image"'
+          TOKEN=$(curl -fs -X PUT http://localhost:8080/api/admin/stream -H 'content-type: application/json' -d '{"enabled":true,"size":"854x480","fps":5}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+          curl -fs --max-time 120 "http://localhost:8080/stream/$TOKEN/live.m3u8" -o live.m3u8
+          cat live.m3u8
+          grep -q '#EXTINF' live.m3u8
+          SEG=$(grep '\.ts$' live.m3u8 | head -1)
+          curl -fs "http://localhost:8080/stream/$TOKEN/$SEG" -o seg.ts
+          docker exec -i pidash ffmpeg -hide_banner -i pipe:0 -t 1 -f null - < seg.ts 2>&1 | tee probe.txt
+          grep -q 'Video: h264' probe.txt
+          grep -q 'Audio: aac' probe.txt
+          grep -q '854x480' probe.txt
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8080/stream/00000000000000000000000000000000/live.m3u8")" = 404
+      - name: Container log
+        if: failure()
+        run: docker logs pidash || true
+
+  # The image that includes Chromium + ffmpeg (Admin > Stream), published as :stream once the smoke test passes.
+  image-stream:
+    needs: stream-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=stream,enable={{is_default_branch}}
+            type=semver,pattern={{version}},suffix=-stream
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            STREAM=1
+          # Alpine has no Chromium for 32-bit ARMv6, so the stream image covers the other three.
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=stream
+          cache-to: type=gha,scope=stream,mode=max

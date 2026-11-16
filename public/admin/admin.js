@@ -733,7 +733,7 @@
     const panels = [
       h('div', { class: 'panel' }, h('h2', {}, 'Live stream (IPTV)'),
         h('p', { class: 'muted small' }, 'Watch the display in an IPTV player (Kodi, VLC, TiviMate, a smart TV app...). PiDash shows its screen in a headless browser and turns it into a live video stream while someone is watching.'),
-        missing.length ? h('p', { class: 'upd-msg err' }, `Streaming needs ${missing.join(' and ')} on the device that runs PiDash. On a Raspberry Pi run: ${s.requirements.installHint} and then restart PiDash. (The Docker image does not include them.)`) : null,
+        missing.length ? h('p', { class: 'upd-msg err' }, s.requirements.help) : null,
         h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: s.enabled, disabled: !s.available, onchange: (e) => put({ enabled: e.target.checked }) }), 'Enable the stream'),
         s.enabled && s.available ? h('p', { class: `upd-msg ${s.phase === 'error' ? 'err' : s.phase === 'running' ? 'ok' : ''}`, style: 'margin-top:10px' }, statusText) : null),
     ];

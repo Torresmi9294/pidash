@@ -104,7 +104,12 @@ function findFfmpeg() {
   return which('ffmpeg');
 }
 
-const INSTALL_HINT = 'sudo apt install -y chromium ffmpeg';
+// How to get the missing tools. In Docker they cannot be installed into a running container: use the stream image.
+const IN_DOCKER = process.env.PIDASH_INSTALL === 'docker';
+const INSTALL_HINT = IN_DOCKER ? 'use the stream image: ghcr.io/torresmi9294/pidash:stream' : 'sudo apt install -y chromium ffmpeg';
+const installHelp = (missing) => (IN_DOCKER
+  ? `Streaming needs ${missing} in the container. Use the "stream" image instead: change the image line in your compose file to ghcr.io/torresmi9294/pidash:stream and run docker compose pull && docker compose up -d (if you build from a checkout, set PIDASH_STREAM=1 in .env and rebuild). It is not available for 32-bit ARMv6 hardware.`
+  : `Streaming needs ${missing} on the device that runs PiDash. On a Raspberry Pi or Debian/Ubuntu run: ${INSTALL_HINT} and then restart PiDash.`);
 
 // ---- the pipeline (browser -> ffmpeg -> HLS files) --------------------------------------------------------------
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -119,7 +124,7 @@ const getJson = (url) => new Promise((resolve, reject) => {
 async function launchReal({ baseUrl, size, fps, noSandbox }) {
   const browserBin = findBrowser();
   const ffmpegBin = findFfmpeg();
-  if (!browserBin || !ffmpegBin) throw new Error(`Streaming needs ${[!browserBin && 'Chromium', !ffmpegBin && 'ffmpeg'].filter(Boolean).join(' and ')} installed on this device (${INSTALL_HINT}).`);
+  if (!browserBin || !ffmpegBin) throw new Error(installHelp([!browserBin && 'Chromium', !ffmpegBin && 'ffmpeg'].filter(Boolean).join(' and ')));
   const [w, h] = SIZES[size];
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pidash-stream-'));
   const tail = [];
@@ -252,7 +257,8 @@ async function launchReal({ baseUrl, size, fps, noSandbox }) {
 }
 
 // ---- the manager -----------------------------------------------------------------------------------------------
-const state = { phase: 'stopped', error: null, pipeline: null, starting: null, lastRequest: 0, noSandbox: false, viewers: new Map(), retryAt: 0, idleTimer: null };
+// Chromium's own sandbox needs user namespaces, which Docker's default profile does not allow: skip the doomed first try there.
+const state = { phase: 'stopped', error: null, pipeline: null, starting: null, lastRequest: 0, noSandbox: process.env.PIDASH_INSTALL === 'docker', viewers: new Map(), retryAt: 0, idleTimer: null };
 let launcher = launchReal;
 
 function touch(who) {
@@ -355,7 +361,10 @@ function status() {
   return {
     enabled: s.enabled, size: s.size, fps: s.fps, sizes: Object.keys(SIZES), fpsOptions: FPS,
     phase: state.phase, error: state.error, viewers: viewers(), idleSeconds: Math.round(IDLE_MS() / 1000),
-    requirements: { browser: !!browser, ffmpeg: !!ffmpeg, installHint: INSTALL_HINT },
+    requirements: {
+      browser: !!browser, ffmpeg: !!ffmpeg, installHint: INSTALL_HINT, docker: IN_DOCKER,
+      help: browser && ffmpeg ? '' : installHelp([!browser && 'Chromium', !ffmpeg && 'ffmpeg'].filter(Boolean).join(' and ')),
+    },
     available: !!browser && !!ffmpeg,
   };
 }

@@ -3,7 +3,11 @@
 # Settings: copy .env.example to .env and edit (port, time zone).
 services:
   pidash:
-    build: .
+    build:
+      context: .
+      args:
+        # 1 = include Chromium + ffmpeg so Admin > Stream (live link for IPTV players) works. Set PIDASH_STREAM=1 in .env.
+        STREAM: ${PIDASH_STREAM:-0}
     image: pidash:local
     container_name: pidash
     restart: unless-stopped

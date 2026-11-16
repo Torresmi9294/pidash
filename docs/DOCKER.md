@@ -19,6 +19,15 @@ The image is built from the checkout, which works on amd64, arm64 and 32-bit ARM
 
 [`deploy/docker-compose.yml`](../deploy/docker-compose.yml) is a standalone file that pulls `ghcr.io/torresmi9294/pidash:latest`, which GitHub Actions rebuilds on every push to `main`. No login is needed.
 
+## Live stream for IPTV players (Admin > Stream)
+
+The Stream tab turns the display into a video stream, which needs Chromium and ffmpeg inside the container. They add a few hundred MB, so they are in a separate image:
+
+- **Prebuilt:** in your compose file use `image: ghcr.io/torresmi9294/pidash:stream` (instead of `:latest`), then `docker compose pull && docker compose up -d`. Available for amd64, arm64 and 32-bit ARMv7.
+- **Built from a checkout:** put `PIDASH_STREAM=1` in `.env` and run `docker compose up -d --build`.
+
+Then open **Admin > Stream**, switch it on, and copy the playlist link. Use the address your IPTV player can reach (for example `http://<server-ip>:8080`) in the "Address used in the links" box. The container runs Chromium without its own sandbox (Docker does not allow it); it only ever loads the dashboard itself.
+
 ## Permission denied on /data?
 
 The container fixes ownership of `/data` itself at start-up. If you bind-mount a host folder (`./data:/data`, common on NAS/Portainer), it is chowned to uid/gid 1000 by default. Set `PUID` and `PGID` under `environment:` to your host user's ids if you want the files owned by someone else (Unraid: `99`/`100`; check yours with `id`).
