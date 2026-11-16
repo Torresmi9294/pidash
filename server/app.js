@@ -12,6 +12,7 @@ const logos = require('./logos');
 const updater = require('./updater');
 const Schedule = require('../public/schedule');
 const fantasy = require('./espn-fantasy');
+const stream = require('./stream');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const BG_DIR = path.join(config.DATA_DIR, 'backgrounds');
@@ -166,6 +167,32 @@ function createApp() {
   });
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+  // ---- live stream for IPTV players (Admin > Stream) ---------------------------------------------------------
+  // Every URL carries a secret token; a wrong token or a switched-off stream looks like any other missing page.
+  const streamAuth = (req, res, next) => (stream.tokenOk(req.params.token) ? next() : res.status(404).end());
+  const originOf = (req) => `${String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0]}://${String(req.headers['x-forwarded-host'] || req.headers.host).split(',')[0]}`;
+  app.get('/stream/:token/playlist.m3u', streamAuth, (req, res) => {
+    const name = String(config.get().display.title || 'PiDash').replace(/[\r\n",]+/g, ' ').trim() || 'PiDash';
+    res.set({ 'Content-Type': 'audio/x-mpegurl; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+    res.send(`#EXTM3U\n#EXTINF:-1 tvg-id="pidash" tvg-name="${name}" group-title="PiDash",${name}\n${originOf(req)}/stream/${req.params.token}/live.m3u8\n`);
+  });
+  app.get('/stream/:token/:file', streamAuth, async (req, res) => {
+    const name = req.params.file;
+    if (!stream._internals.HLS_FILE.test(name)) return res.status(404).end();
+    stream.touch(req.ip || 'viewer');
+    if (name === 'live.m3u8') { // asking for the playlist is what starts the browser + encoder (and holds the request until there is video)
+      try {
+        await stream.ensure(`http://127.0.0.1:${req.socket.localPort}/?stream=1`);
+        await stream.waitReady();
+      } catch (e) {
+        return res.status(503).set('Retry-After', '3').type('text/plain').send(`The stream is not ready: ${e.message}`);
+      }
+    }
+    const file = stream.filePath(name);
+    if (!file) return res.status(404).end();
+    res.sendFile(file, { cacheControl: false, headers: { 'Content-Type': name.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp2t', 'Cache-Control': 'no-cache, no-store', 'Access-Control-Allow-Origin': '*' } });
+  });
 
   // ---- display API (read-only, no secrets) -------------------------------
   // Should the display be asleep right now? Polled by the Pi's kiosk script, which switches the monitor itself off.
@@ -428,6 +455,22 @@ function createApp() {
     } catch (e) {
       res.status(502).json({ error: e.message });
     }
+  });
+
+  // Stream settings and status for the Stream tab.
+  const streamInfo = () => ({ ...stream.status(), token: stream.settings().token });
+  admin.get('/stream', (req, res) => res.json(streamInfo()));
+  admin.put('/stream', (req, res) => {
+    try {
+      stream.update(req.body || {});
+      res.json(streamInfo());
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+  admin.post('/stream/token', (req, res) => {
+    stream.regenerateToken();
+    res.json(streamInfo());
   });
 
   admin.get('/new-id/:type', (req, res) => res.json({ id: config.newId(req.params.type.replace(/[^a-z0-9-]/gi, '')) }));

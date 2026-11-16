@@ -96,13 +96,13 @@
   }
 
   // ---- tabs --------------------------------------------------------------
-  const TABS = { widgets: 'Widgets', display: 'Display', themes: 'Themes', schedule: 'Schedule', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security', updates: 'Updates' };
+  const TABS = { widgets: 'Widgets', display: 'Display', themes: 'Themes', schedule: 'Schedule', stream: 'Stream', google: 'Google', health: 'Health', reminders: 'Reminders', security: 'Security', updates: 'Updates' };
 
   function render() {
     $('#tabs').replaceChildren(...Object.entries(TABS).map(([k, label]) =>
       h('button', { class: tab === k ? 'on' : '', onclick: () => { tab = k; render(); } }, label, k === 'updates' && upd && upd.state === 'update-available' ? h('span', { class: 'badge-dot', title: 'Update available' }, ' ●') : null)));
     const view = $('#view');
-    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, themes: viewThemes, schedule: viewSchedule, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity, updates: viewUpdates })[tab]());
+    view.replaceChildren(...({ widgets: viewWidgets, display: viewDisplay, themes: viewThemes, schedule: viewSchedule, stream: viewStream, google: viewGoogle, health: viewHealth, reminders: viewReminders, security: viewSecurity, updates: viewUpdates })[tab]());
   }
 
   // ---- widgets -----------------------------------------------------------
@@ -681,6 +681,87 @@
           h('button', { class: 'btn', type: 'button', onclick: () => apply({ mode: 'awake', until: Date.now() + 4 * 3600e3 }) }, 'Stay awake for 4 hours'),
           sch.override ? h('button', { class: 'btn', type: 'button', onclick: () => apply(null) }, 'Back to the schedule') : null)),
     ];
+  }
+
+  // ---- stream: a live link for IPTV players ---------------------------------------------------------
+  let strm = null;       // last /stream answer
+  let strmLoading = false;
+  const keyOf = (s) => JSON.stringify([s.enabled, s.token, s.size, s.fps, s.phase, s.viewers, s.error, s.available]);
+  async function loadStream(quiet) {
+    const s = await api('GET', '/stream');
+    const changed = !strm || keyOf(s) !== keyOf(strm);
+    strm = s;
+    if (changed || !quiet) render();
+  }
+  setInterval(() => { if (tab === 'stream' && strm && strm.enabled && !document.hidden) loadStream(true).catch(() => {}); }, 4000); // live status while the tab is open
+
+  function copyText(text, btn) {
+    const done = () => { const old = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = old; }, 1500); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => toast('Select the link and copy it', true));
+    else {
+      const t = h('textarea', { style: 'position:fixed;opacity:0' }, text);
+      document.body.append(t);
+      t.select();
+      try { document.execCommand('copy'); done(); } catch { toast('Select the link and copy it', true); }
+      t.remove();
+    }
+  }
+
+  function viewStream() {
+    if (!strm && !strmLoading) { strmLoading = true; loadStream().catch((e) => toast(e.message, true)).finally(() => { strmLoading = false; }); }
+    if (!strm) return [h('div', { class: 'panel' }, h('h2', {}, 'Live stream'), h('p', { class: 'muted' }, 'Loading...'))];
+    const s = strm;
+    let saved = '';
+    try { saved = localStorage.getItem('pidash.streamBase') || ''; } catch { /* storage unavailable */ }
+    const base = (saved || location.origin).replace(/\/+$/, '');
+    const link = (file) => `${base}/stream/${s.token}/${file}`;
+    const put = guard(async (patch) => { strm = await api('PUT', '/stream', patch); render(); });
+    const missing = [!s.requirements.browser && 'Chromium', !s.requirements.ffmpeg && 'ffmpeg'].filter(Boolean);
+
+    const linkRow = (label, file, hint) => {
+      const url = link(file);
+      const btn = h('button', { class: 'btn', type: 'button', onclick: () => copyText(url, btn) }, 'Copy');
+      return h('div', { class: 'f' }, h('span', {}, label),
+        h('div', { class: 'row' }, h('input', { class: 'grow', type: 'text', readonly: true, value: url, onfocus: (e) => e.target.select() }), btn),
+        h('small', { class: 'muted' }, hint));
+    };
+    const statusText = s.phase === 'running' ? `Streaming now to ${s.viewers} viewer${s.viewers === 1 ? '' : 's'}.`
+      : s.phase === 'starting' ? 'Starting...'
+        : s.phase === 'error' ? `The stream could not run: ${s.error}`
+          : `Ready. It starts when a player connects (the first picture takes about 10 seconds) and stops ${s.idleSeconds} seconds after the last viewer leaves.`;
+
+    const panels = [
+      h('div', { class: 'panel' }, h('h2', {}, 'Live stream (IPTV)'),
+        h('p', { class: 'muted small' }, 'Watch the display in an IPTV player (Kodi, VLC, TiviMate, a smart TV app...). PiDash shows its screen in a headless browser and turns it into a live video stream while someone is watching.'),
+        missing.length ? h('p', { class: 'upd-msg err' }, `Streaming needs ${missing.join(' and ')} on the device that runs PiDash. On a Raspberry Pi run: ${s.requirements.installHint} and then restart PiDash. (The Docker image does not include them.)`) : null,
+        h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: s.enabled, disabled: !s.available, onchange: (e) => put({ enabled: e.target.checked }) }), 'Enable the stream'),
+        s.enabled && s.available ? h('p', { class: `upd-msg ${s.phase === 'error' ? 'err' : s.phase === 'running' ? 'ok' : ''}`, style: 'margin-top:10px' }, statusText) : null),
+    ];
+    if (s.enabled && s.available && s.token) {
+      panels.push(
+        h('div', { class: 'panel' }, h('h2', {}, 'Links'),
+          linkRow('IPTV playlist (M3U) - add this to your IPTV app', 'playlist.m3u', 'Most IPTV apps ask for a playlist URL. It contains one channel that plays the display.'),
+          linkRow('Direct stream (HLS)', 'live.m3u8', 'For players that take a single stream URL, such as VLC (Media > Open Network Stream).'),
+          h('label', { class: 'f' }, h('span', {}, 'Address used in the links'),
+            h('input', { type: 'text', value: base, placeholder: 'http://192.168.1.50:8080', onchange: (e) => { try { localStorage.setItem('pidash.streamBase', e.target.value.trim()); } catch { /* ignore */ } render(); } }),
+            h('small', { class: 'muted' }, 'This is the address you opened the admin page on. Use the address your IPTV player can reach, such as the Pi\'s IP on your home network (http://<pi-ip>:' + (location.port || 80) + ').')),
+          h('p', { class: 'upd-msg', style: 'color:var(--bad);border-color:var(--bad)' }, 'Anyone with these links can watch your display, including your calendar and other personal widgets. Keep them private; the admin password does not protect them. If a link leaks, make a new one.'),
+          h('div', { class: 'row' }, h('button', { class: 'btn danger', type: 'button', onclick: guard(async () => { if (!confirm('Make a new link? The old link stops working and every player must be updated.')) return; strm = await api('POST', '/stream/token'); render(); toast('New link made'); }) }, 'Make a new link'))),
+        h('div', { class: 'panel' }, h('h2', {}, 'Quality'),
+          h('label', { class: 'f' }, h('span', {}, 'Picture size'),
+            h('select', { onchange: (e) => put({ size: e.target.value }) }, s.sizes.map((v) => h('option', { value: v, selected: s.size === v }, `${v.replace('x', ' x ')}${v === '1280x720' ? ' (HD, recommended)' : v === '854x480' ? ' (lightest, for a small Pi)' : ' (Full HD, needs a fast Pi or PC)'}`)))),
+          h('label', { class: 'f' }, h('span', {}, 'Frames per second'),
+            h('select', { onchange: (e) => put({ fps: Number(e.target.value) }) }, s.fpsOptions.map((v) => h('option', { value: v, selected: s.fps === v }, `${v}${v === 5 ? ' (recommended: the dashboard rarely moves)' : ''}`)))),
+          h('p', { class: 'muted small' }, 'While someone watches, the Pi runs a headless browser and a video encoder, which is noticeable on small Pis. Lower size and frame rate use less. Changing these restarts the stream.')),
+        h('div', { class: 'panel' }, h('h2', {}, 'Adding it to a player'),
+          h('ul', { class: 'upd-changes' },
+            h('li', {}, h('b', {}, 'Kodi: '), 'install PVR IPTV Simple Client, choose "Remote path (Internet address)" and paste the playlist link.'),
+            h('li', {}, h('b', {}, 'VLC: '), 'Media > Open Network Stream, paste the direct stream link.'),
+            h('li', {}, h('b', {}, 'TiviMate, IPTV Smarters and similar: '), 'add a playlist by URL and paste the playlist link.'),
+            h('li', {}, h('b', {}, 'Outside your home network: '), 'use the address you reach PiDash on from there (for example your reverse proxy domain), set above.')))
+    );
+    }
+    return panels;
   }
 
   // ---- updates -----------------------------------------------------------

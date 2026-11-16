@@ -269,6 +269,7 @@
   // While asleep the screen goes black (or very dim, or shows a dim clock). Touching it wakes the display for a while.
   function initSleep() {
     const sch = PidashSchedule.sanitize(display.schedule);
+    if (new URLSearchParams(location.search).has('stream')) return; // the copy of the display that is being streamed never sleeps
     if (!sch.enabled && !sch.override) return; // nothing can put it to sleep (a changed setting reloads the page)
     const fmt = makeFmt(display);
     const el = document.getElementById('sleep');

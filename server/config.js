@@ -64,6 +64,8 @@ const DEFAULTS = () => ({
     },
   },
   admin: { password: '' },
+  // Live stream of the display for IPTV players (Admin > Stream). The token makes the link private.
+  stream: { enabled: false, token: '', size: '1280x720', fps: 5 },
   health: { token: '' },
   google: { clientId: '', clientSecret: '', redirectUri: '', tokens: null },
   widgets: [
