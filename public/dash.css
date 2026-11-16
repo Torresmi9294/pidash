@@ -141,6 +141,13 @@ body {
 .cal-ev .when { color: var(--muted); font-variant-numeric: tabular-nums; font-size: calc(0.95 * var(--u)); padding-top: calc(0.12 * var(--u)); }
 .cal-ev .loc { color: var(--muted); font-size: calc(0.85 * var(--u)); }
 .cal-ev .title { overflow: hidden; text-overflow: ellipsis; }
+.cal-dot { display: inline-block; flex: none; width: calc(0.7 * var(--u)); height: calc(0.7 * var(--u)); border-radius: 50%; margin-right: calc(0.45 * var(--u)); vertical-align: baseline; }
+.cal-ev .title.bar { display: block; width: fit-content; max-width: 100%; padding: 0 calc(0.55 * var(--u)); border-radius: calc(0.35 * var(--u)); font-weight: 600; }
+.cal-ev .title.bar .star { color: inherit; }
+.month .e.dotted { background: transparent; }
+.month .e .cal-dot { width: 0.7em; height: 0.7em; margin-right: 0.35em; }
+.month .e.bar { font-weight: 600; }
+.month .e.bar.pin { color: inherit; }
 
 /* ---- calendar month ---- */
 .month { display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: auto repeat(6, minmax(0, 1fr)); gap: 2px; height: 100%; }

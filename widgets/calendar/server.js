@@ -12,8 +12,9 @@ exports.meta = {
   fields: [
     { key: 'view', label: 'View', type: 'select', options: [{ value: 'agenda', label: 'Agenda (list)' }, { value: 'month', label: 'Month grid' }] },
     { key: 'useGoogle', label: 'Use Google Calendar (connect it on the Google tab)', type: 'checkbox' },
-    { key: 'calendarIds', label: 'Google calendar IDs (one per line)', type: 'textarea', placeholder: 'primary', help: 'Blank = your primary calendar. Find IDs on the Google tab.' },
-    { key: 'icsUrls', label: 'ICS feed URLs (one per line)', type: 'textarea', secret: true, placeholder: 'https://calendar.google.com/calendar/ical/.../basic.ics', help: 'The easiest option - no API setup. These URLs are private, so they are hidden once saved.' },
+    { key: 'calendarIds', label: 'Google calendar IDs (one per line)', type: 'textarea', placeholder: 'primary', help: 'Blank = your primary calendar. Find IDs on the Google tab. Add a color after the ID to override it, e.g. "family@group.calendar.google.com #039be5".' },
+    { key: 'icsUrls', label: 'ICS feed URLs (one per line)', type: 'textarea', secret: true, placeholder: 'https://calendar.google.com/calendar/ical/.../basic.ics #0b8043', help: 'The easiest option - no API setup. These URLs are private, so they are hidden once saved. Feeds do not carry Google colors, so add one after the URL (e.g. #0b8043); iCloud and Outlook feeds that declare their own color are picked up automatically.' },
+    { key: 'useColors', label: 'Color-code events like Google Calendar (a dot for timed events, a filled bar for all-day events)', type: 'checkbox', default: true },
     { key: 'highlight', label: 'Highlight what matters (NOW / NEXT markers, dim past events, busy days)', type: 'checkbox', default: true },
     { key: 'highlightWords', label: 'Always highlight events containing (comma-separated)', type: 'text', placeholder: 'birthday, anniversary, flight', help: 'Matching events get a star and stand out in both views.' },
     { key: 'daysAhead', label: 'Days ahead (agenda)', type: 'number', placeholder: '7' },
@@ -22,6 +23,19 @@ exports.meta = {
 };
 
 const lines = (s) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
+// '#abc' / '#aabbcc' -> '#aabbcc'; anything else -> null
+function cleanColor(v) {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(v || '').trim());
+  if (!m) return null;
+  const h = m[1].length === 3 ? m[1].split('').map((c) => c + c).join('') : m[1];
+  return `#${h.toLowerCase()}`;
+}
+// "https://example.com/cal.ics #0b8043" -> { value: 'https://example.com/cal.ics', color: '#0b8043' } (the color is optional)
+function splitColor(line) {
+  const m = /^(.*\S)\s+(#[0-9a-f]{3}|#[0-9a-f]{6})$/i.exec(line);
+  return m ? { value: m[1], color: cleanColor(m[2]) } : { value: line, color: null };
+}
 const pad = (n) => String(n).padStart(2, '0');
 const localDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -47,7 +61,7 @@ function rangeFor(options) {
   return { from, to };
 }
 
-function fromIcs(ev, from, to, calendar) {
+function fromIcs(ev, from, to, calendar, color) {
   const allDay = ev.datetype === 'date';
   const dur = ev.end ? ev.end - ev.start : 0;
   const make = (start, src) => {
@@ -60,6 +74,7 @@ function fromIcs(ev, from, to, calendar) {
       start: allDay ? localDate(start) : start.toISOString(),
       end: allDay ? localDate(end) : end.toISOString(),
       calendar,
+      color: cleanColor(src.color || src.COLOR || src['APPLE-CALENDAR-COLOR'] || src['X-APPLE-CALENDAR-COLOR']) || color || null, // an event may declare its own COLOR (RFC 7986)
       _s: start,
       _e: end,
     };
@@ -84,15 +99,21 @@ function fromIcs(ev, from, to, calendar) {
   return out.filter((e) => e._e > from && e._s < to);
 }
 
-async function readIcs(url, from, to) {
+async function readIcs(url, from, to, override) {
   const res = await fetch(url, { headers: { 'user-agent': 'PiDash/1.0' }, signal: AbortSignal.timeout(20000) });
   if (!res.ok) throw new Error(`ICS feed returned HTTP ${res.status}`);
   const parsed = ical.sync.parseICS(await res.text());
-  const calName = (Object.values(parsed).find((v) => v.type === 'VCALENDAR') || {})['WR-CALNAME'] || '';
+  const cal = Object.values(parsed).find((v) => v.type === 'VCALENDAR') || {};
+  // Your color for this feed wins; otherwise whatever the feed declares for itself (iCloud, Outlook, RFC 7986).
+  // (node-ical drops the "X-" prefix of extension properties, so accept both spellings)
+  const declared = (...keys) => keys.map((k) => cleanColor(cal[k])).find(Boolean) || null;
+  const feedColor = override || declared('APPLE-CALENDAR-COLOR', 'X-APPLE-CALENDAR-COLOR', 'color', 'COLOR', 'OUTLOOK-COLOR', 'X-OUTLOOK-COLOR');
   return Object.values(parsed)
     .filter((v) => v.type === 'VEVENT')
-    .flatMap((ev) => fromIcs(ev, from, to, calName));
+    .flatMap((ev) => fromIcs(ev, from, to, cal['WR-CALNAME'] || '', feedColor));
 }
+
+exports._internals = { cleanColor, splitColor };
 
 exports.data = async (options) => {
   const { from, to } = rangeFor(options);
@@ -101,10 +122,15 @@ exports.data = async (options) => {
 
   const wantsGoogle = options.useGoogle || (!lines(options.icsUrls).length && google.status().connected);
   if (wantsGoogle) {
-    const ids = lines(options.calendarIds);
-    for (const id of ids.length ? ids : ['primary']) jobs.push(google.events(id, from, to).then((evs) => evs.map((e) => ({ ...e, calendar: id }))));
+    const ids = lines(options.calendarIds).map(splitColor);
+    for (const { value: id, color } of ids.length ? ids : [{ value: 'primary', color: null }]) {
+      jobs.push(google.events(id, from, to).then((evs) => evs.map((e) => ({ ...e, calendar: id, color: color || e.color }))));
+    }
   }
-  for (const url of lines(options.icsUrls)) jobs.push(readIcs(url, from, to));
+  for (const line of lines(options.icsUrls)) {
+    const { value, color } = splitColor(line);
+    jobs.push(readIcs(value, from, to, color));
+  }
 
   if (!jobs.length) throw new Error('No calendar source configured. Connect Google or add an ICS URL in the calendar widget settings.');
 

@@ -101,6 +101,39 @@ async function listCalendars() {
   return (b.items || []).map((c) => ({ id: c.id, name: c.summaryOverride || c.summary, color: c.backgroundColor, primary: !!c.primary }));
 }
 
+// ---- colors ------------------------------------------------------------------------------------------------------
+// Google Calendar shows an event in its calendar's color (calendarList backgroundColor, which is whatever you picked in
+// Google Calendar, including custom colors) unless the event has its own colorId. The colors the API's /colors endpoint
+// returns for colorId are the old pastel palette; the app shows these, so use them.
+const EVENT_COLORS = {
+  1: '#7986cb', 2: '#33b679', 3: '#8e24aa', 4: '#e67c73', 5: '#f6bf26', 6: '#f4511e',
+  7: '#039be5', 8: '#616161', 9: '#3f51b5', 10: '#0b8043', 11: '#d50000',
+};
+const COLOR_TTL = 3600e3;
+let colorCache = null; // { at, byId: Map(calendarId -> hex), primary: hex }
+
+async function calendarColors() {
+  if (colorCache && Date.now() - colorCache.at < COLOR_TTL) return colorCache;
+  const b = await api('https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&fields=items(id,backgroundColor,primary)');
+  const byId = new Map();
+  let primary = null;
+  for (const c of b.items || []) {
+    if (c.backgroundColor) byId.set(c.id, c.backgroundColor);
+    if (c.primary) primary = c.backgroundColor || null;
+  }
+  colorCache = { at: Date.now(), byId, primary };
+  return colorCache;
+}
+
+async function calendarColor(calendarId) {
+  try {
+    const c = await calendarColors();
+    return calendarId === 'primary' ? c.primary : c.byId.get(calendarId) || null;
+  } catch {
+    return null; // colors are a nicety: never fail the events because of them
+  }
+}
+
 async function events(calendarId, from, to) {
   const q = new URLSearchParams({
     timeMin: from.toISOString(),
@@ -109,7 +142,7 @@ async function events(calendarId, from, to) {
     orderBy: 'startTime',
     maxResults: '100',
   });
-  const b = await api(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${q}`);
+  const [b, calColor] = await Promise.all([api(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${q}`), calendarColor(calendarId)]);
   return (b.items || [])
     .filter((e) => e.status !== 'cancelled')
     .map((e) => ({
@@ -119,7 +152,8 @@ async function events(calendarId, from, to) {
       allDay: !!(e.start && e.start.date),
       start: e.start.date || e.start.dateTime,
       end: e.end.date || e.end.dateTime,
+      color: (e.colorId && EVENT_COLORS[e.colorId]) || calColor || null,
     }));
 }
 
-module.exports = { status, authUrl, exchange, disconnect, listCalendars, events };
+module.exports = { status, authUrl, exchange, disconnect, listCalendars, events, EVENT_COLORS, _resetColors: () => { colorCache = null; } };
